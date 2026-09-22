@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'screens/auth/login_screen.dart';
+
 class MessMateApp extends StatelessWidget {
   const MessMateApp({super.key});
 
@@ -16,17 +18,7 @@ class MessMateApp extends StatelessWidget {
         ),
       ),
 
-      home: const Scaffold(
-        body: Center(
-          child: Text(
-            'Welcome to MessMate',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
+      home: const LoginScreen(),
     );
   }
 }
