@@ -5,6 +5,7 @@ import 'attendance_management.dart';
 import 'student_management.dart';
 import 'bill_management.dart';
 import 'collection_screen.dart';
+import 'menu_requests_screen.dart';
 
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
@@ -27,30 +28,42 @@ class ManagerDashboard extends StatelessWidget {
             Icons.person,
             const ManagerProfile(),
           ),
+
           _item(
             context,
             'Menu',
             Icons.restaurant_menu,
             const MenuManagement(),
           ),
+
+          _item(
+            context,
+            'Menu Requests',
+            Icons.how_to_vote,
+            const MenuRequestsScreen(),
+          ),
+
           _item(
             context,
             'Attendance',
             Icons.check_circle,
             const AttendanceManagement(),
           ),
+
           _item(
             context,
             'Students',
             Icons.people,
             const StudentManagement(),
           ),
+
           _item(
             context,
             'Bills',
             Icons.receipt,
             const BillManagement(),
           ),
+
           _item(
             context,
             'Collection',

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/student.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/validators.dart';
+import 'login_screen.dart';
 
 class StudentRegisterScreen extends StatefulWidget {
   const StudentRegisterScreen({super.key});
@@ -35,7 +37,6 @@ class _StudentRegisterScreenState
     });
 
     try {
-      // Create Student model
       final student = Student(
         id: '',
         name: _nameController.text.trim(),
@@ -45,11 +46,11 @@ class _StudentRegisterScreenState
         hostel: _hostelController.text.trim(),
       );
 
-      // Create provider
-      final authProvider = AuthProvider();
+      final authProvider = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      );
 
-      // Provider expects:
-      // registerStudent(Student student, String password)
       final success = await authProvider.registerStudent(
         student,
         _passwordController.text,
@@ -66,7 +67,12 @@ class _StudentRegisterScreenState
           ),
         );
 
-        Navigator.pop(context);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          ),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -82,7 +88,9 @@ class _StudentRegisterScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(
+            'Registration failed: $e',
+          ),
         ),
       );
     } finally {
@@ -118,7 +126,6 @@ class _StudentRegisterScreenState
           key: _formKey,
           child: Column(
             children: [
-              // Name
               TextFormField(
                 controller: _nameController,
                 validator: Validators.required,
@@ -130,7 +137,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 15),
 
-              // Email
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -143,7 +149,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 15),
 
-              // Password
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -156,7 +161,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 15),
 
-              // Contact Number
               TextFormField(
                 controller: _contactController,
                 keyboardType: TextInputType.phone,
@@ -169,7 +173,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 15),
 
-              // College
               TextFormField(
                 controller: _collegeController,
                 validator: Validators.required,
@@ -181,7 +184,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 15),
 
-              // Hostel
               TextFormField(
                 controller: _hostelController,
                 validator: Validators.required,
@@ -193,7 +195,6 @@ class _StudentRegisterScreenState
 
               const SizedBox(height: 25),
 
-              // Register button
               _loading
                   ? const CircularProgressIndicator()
                   : SizedBox(

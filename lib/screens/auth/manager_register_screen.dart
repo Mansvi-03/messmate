@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/manager.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/validators.dart';
+import 'login_screen.dart';
 
 class ManagerRegisterScreen extends StatefulWidget {
   const ManagerRegisterScreen({super.key});
@@ -40,7 +42,10 @@ class _ManagerRegisterScreenState
         contactNumber: _contactController.text.trim(),
       );
 
-      final authProvider = AuthProvider();
+      final authProvider = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      );
 
       final success = await authProvider.registerManager(
         manager,
@@ -58,7 +63,12 @@ class _ManagerRegisterScreenState
           ),
         );
 
-        Navigator.pop(context);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          ),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -74,7 +84,9 @@ class _ManagerRegisterScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(
+            'Registration failed: $e',
+          ),
         ),
       );
     } finally {
@@ -164,7 +176,9 @@ class _ManagerRegisterScreenState
                   onPressed: _register,
                   child: const Text(
                     'Register',
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../manager/manager_dashboard.dart';
 import '../student/student_dashboard.dart';
-import 'student_register_screen.dart';
 import 'manager_register_screen.dart';
+import 'student_register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -35,31 +38,64 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final authProvider =
-    Provider.of<AuthProvider>(context, listen: false);
+    setState(() {
+      _loading = true;
+    });
 
-    final success = await authProvider.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      Navigator.pushReplacement(
+    try {
+      final authProvider =
+      Provider.of<AuthProvider>(
         context,
-        MaterialPageRoute(
-          builder: (_) => const StudentDashboard(),
-        ),
+        listen: false,
       );
-    } else {
+
+      final success = await authProvider.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        if (authProvider.userRole == 'student') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const StudentDashboard(),
+            ),
+          );
+        } else if (authProvider.userRole == 'manager') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ManagerDashboard(),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              authProvider.errorMessage ??
+                  'Login failed',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            authProvider.errorMessage ?? 'Login failed',
-          ),
+          content: Text('Login failed: $e'),
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -110,9 +146,18 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton(
+              child: _loading
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : ElevatedButton(
                 onPressed: _login,
-                child: const Text('Login'),
+                child: const Text(
+                  'Login',
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
 
@@ -120,7 +165,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const Text(
               "Don't have an account?",
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 16,
+              ),
             ),
 
             const SizedBox(height: 15),
