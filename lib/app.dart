@@ -18,7 +18,13 @@ class MessMateApp extends StatelessWidget {
         ),
       ),
 
+      // Login screen
       home: const LoginScreen(),
+
+      // App routes
+      routes: {
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }

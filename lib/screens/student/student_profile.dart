@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/firestore_service.dart';
+import '../auth/login_screen.dart';
 
 class StudentProfile extends StatefulWidget {
   const StudentProfile({super.key});
@@ -458,21 +459,62 @@ class _StudentProfileState extends State<StudentProfile> {
 
   Future<void> _logout() async {
     try {
+      debugPrint('LOGOUT: Starting logout...');
+
+      final user = FirebaseAuth.instance.currentUser;
+
+      debugPrint(
+        'LOGOUT: Current user = ${user?.email}',
+      );
+
       await FirebaseAuth.instance.signOut();
+
+      debugPrint('LOGOUT: Firebase signOut successful');
 
       if (!mounted) return;
 
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/login',
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
             (route) => false,
       );
-    } catch (e) {
+
+      debugPrint('LOGOUT: Navigation successful');
+    } on FirebaseAuthException catch (e) {
+      debugPrint(
+        'LOGOUT FIREBASE ERROR: ${e.code}',
+      );
+
+      debugPrint(
+        'LOGOUT FIREBASE MESSAGE: ${e.message}',
+      );
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to logout.'),
+        SnackBar(
+          content: Text(
+            'Logout error: ${e.code}',
+          ),
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint(
+        'LOGOUT ERROR: $e',
+      );
+
+      debugPrint(
+        'LOGOUT STACKTRACE: $stackTrace',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Logout error: $e',
+          ),
         ),
       );
     }

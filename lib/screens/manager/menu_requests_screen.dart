@@ -15,272 +15,395 @@ class _MenuRequestsScreenState
   final FirestoreService _firestoreService =
   FirestoreService();
 
-  List<Map<String, dynamic>> _requests = [];
-  List<Map<String, dynamic>> _polls = [];
+  final List<String> _days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  Map<String, int> _requestCounts = {};
+
+  Map<String, Map<String, dynamic>> _menu = {};
+
+  DateTime _currentDate = DateTime.now();
 
   bool _isLoading = true;
+
+  String? _errorMessage;
+
+  // ----------------------------------------------------------
+  // INIT
+  // ----------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
+
     _loadData();
   }
 
+  // ----------------------------------------------------------
+  // TODAY
+  // ----------------------------------------------------------
+
+  String _getToday() {
+    return _days[_currentDate.weekday - 1];
+  }
+
+  // ----------------------------------------------------------
+  // TOMORROW
+  // ----------------------------------------------------------
+
+  String _getTomorrow() {
+    final tomorrow =
+    _currentDate.add(
+      const Duration(days: 1),
+    );
+
+    return _days[tomorrow.weekday - 1];
+  }
+
+  // ----------------------------------------------------------
+  // LOAD DATA
+  // ----------------------------------------------------------
+
   Future<void> _loadData() async {
     try {
+      // ------------------------------------------------------
+      // LOAD MENUS
+      // ------------------------------------------------------
+
+      final menuData =
+      await _firestoreService.getAll(
+        'menus',
+      );
+
+      final Map<String,
+          Map<String, dynamic>>
+      loadedMenu = {};
+
+      for (final item in menuData) {
+        final day =
+        item['day']?.toString();
+
+        if (day != null &&
+            day.isNotEmpty) {
+          loadedMenu[day] = item;
+        }
+      }
+
+      // ------------------------------------------------------
+      // LOAD REQUESTS
+      // ------------------------------------------------------
+
       final requests =
       await _firestoreService.getAll(
         'menu_change_requests',
       );
 
-      final polls =
-      await _firestoreService.getAll(
-        'menu_polls',
-      );
+      final Map<String, int> counts = {};
+
+      for (final request in requests) {
+        if (request['status'] != 'pending') {
+          continue;
+        }
+
+        final day =
+        request['day']?.toString();
+
+        final meal =
+        request['meal']?.toString();
+
+        if (day == null ||
+            meal == null) {
+          continue;
+        }
+
+        final key =
+            '$day-$meal';
+
+        counts[key] =
+            (counts[key] ?? 0) + 1;
+      }
 
       if (!mounted) return;
 
       setState(() {
-        _requests = requests
-            .where(
-              (item) =>
-          item['status'] == 'pending',
-        )
-            .toList();
-
-        _polls = polls;
+        _menu = loadedMenu;
+        _requestCounts = counts;
+        _currentDate = DateTime.now();
         _isLoading = false;
+        _errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
+        _errorMessage =
+        'Failed to load menu requests.';
       });
     }
   }
 
-  Future<void> _rejectRequest(
-      String requestId,
-      ) async {
-    try {
-      await _firestoreService.update(
-        'menu_change_requests',
-        requestId,
-        {
-          'status': 'rejected',
-        },
-      );
+  // ----------------------------------------------------------
+  // GET CURRENT MENU
+  // ----------------------------------------------------------
 
-      await _loadData();
+  String _getMealMenu(
+      String day,
+      String meal,
+      ) {
+    final dayMenu =
+    _menu[day];
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Request rejected.',
-          ),
-        ),
-      );
-    } catch (e) {
-      _showError();
+    if (dayMenu == null) {
+      return 'No menu added';
     }
+
+    final value =
+    dayMenu[
+    meal.toLowerCase()
+    ]
+        ?.toString()
+        .trim();
+
+    if (value == null ||
+        value.isEmpty) {
+      return 'No menu added';
+    }
+
+    return value;
   }
 
-  Future<void> _createPoll(
-      Map<String, dynamic> request,
+  // ----------------------------------------------------------
+  // GET REQUEST COUNT
+  // ----------------------------------------------------------
+
+  int _getRequestCount(
+      String day,
+      String meal,
+      ) {
+    return _requestCounts[
+    '$day-$meal'] ??
+        0;
+  }
+
+  // ----------------------------------------------------------
+  // CHANGE MENU
+  // ----------------------------------------------------------
+
+  Future<void> _changeMenu(
+      String day,
+      String meal,
       ) async {
+    final currentMenu =
+    _getMealMenu(
+      day,
+      meal,
+    );
+
     final controller =
-    TextEditingController(text: '6');
+    TextEditingController(
+      text: currentMenu ==
+          'No menu added'
+          ? ''
+          : currentMenu,
+    );
 
-    final hours = await showDialog<int>(
+    final formKey =
+    GlobalKey<FormState>();
+
+    final newMenu =
+    await showDialog<String>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Create Voting Poll',
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType:
-            TextInputType.number,
-            decoration:
-            const InputDecoration(
-              labelText:
-              'Voting duration in hours',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final value =
-                int.tryParse(
-                  controller.text.trim(),
-                );
+        bool isSaving = false;
 
-                if (value == null ||
-                    value <= 0) {
-                  return;
-                }
-
-                Navigator.pop(
-                  context,
-                  value,
-                );
-              },
-              child: const Text(
-                'Create Poll',
+        return StatefulBuilder(
+          builder: (
+              context,
+              setDialogState,
+              ) {
+            return AlertDialog(
+              title: Text(
+                'Change $meal Menu',
               ),
-            ),
-          ],
+
+              content:
+              Form(
+                key: formKey,
+
+                child:
+                TextFormField(
+                  controller:
+                  controller,
+
+                  maxLines: 4,
+
+                  decoration:
+                  const InputDecoration(
+                    labelText:
+                    'Menu',
+
+                    hintText:
+                    'Enter new menu',
+
+                    border:
+                    OutlineInputBorder(),
+                  ),
+
+                  validator: (value) {
+                    if (value == null ||
+                        value.trim().isEmpty) {
+                      return 'Enter menu';
+                    }
+
+                    return null;
+                  },
+                ),
+              ),
+
+              actions: [
+                TextButton(
+                  onPressed:
+                  isSaving
+                      ? null
+                      : () {
+                    Navigator.pop(
+                      context,
+                    );
+                  },
+                  child:
+                  const Text(
+                    'Cancel',
+                  ),
+                ),
+
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                    if (!formKey
+                        .currentState!
+                        .validate()) {
+                      return;
+                    }
+
+                    Navigator.pop(
+                      context,
+                      controller.text
+                          .trim(),
+                    );
+                  },
+
+                  child: isSaving
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child:
+                    CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : const Text(
+                    'Save',
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
     controller.dispose();
 
-    if (hours == null) {
+    if (newMenu == null ||
+        newMenu.trim().isEmpty) {
       return;
     }
 
-    try {
-      final now = DateTime.now();
-
-      final deadline =
-      now.add(
-        Duration(hours: hours),
-      );
-
-      final pollId =
-      DateTime.now()
-          .millisecondsSinceEpoch
-          .toString();
-
-      await _firestoreService.add(
-        'menu_polls',
-        pollId,
-        {
-          'requestId':
-          request['id'],
-          'day':
-          request['day'],
-          'meal':
-          request['meal'],
-          'currentMenu':
-          request['currentMenu'],
-          'proposedMenu':
-          request['proposedMenu'],
-          'createdAt':
-          now.toIso8601String(),
-          'deadline':
-          deadline.toIso8601String(),
-          'status': 'active',
-        },
-      );
-
-      await _firestoreService.update(
-        'menu_change_requests',
-        request['id'],
-        {
-          'status': 'poll_created',
-        },
-      );
-
-      await _loadData();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Poll created successfully.',
-          ),
-        ),
-      );
-    } catch (e) {
-      _showError();
-    }
-  }
-
-  Future<Map<String, int>> _getVoteCounts(
-      String pollId,
-      ) async {
-    final votes =
-    await _firestoreService.getAll(
-      'menu_polls/$pollId/votes',
+    await _saveMenu(
+      day,
+      meal,
+      newMenu.trim(),
     );
-
-    int currentVotes = 0;
-    int proposedVotes = 0;
-
-    for (final vote in votes) {
-      if (vote['option'] == 'current') {
-        currentVotes++;
-      } else if (vote['option'] ==
-          'proposed') {
-        proposedVotes++;
-      }
-    }
-
-    return {
-      'current': currentVotes,
-      'proposed': proposedVotes,
-    };
   }
 
-  bool _isExpired(
-      Map<String, dynamic> poll,
-      ) {
-    final deadline =
-    poll['deadline']?.toString();
+  // ----------------------------------------------------------
+  // SAVE MENU
+  // ----------------------------------------------------------
 
-    if (deadline == null) {
-      return true;
-    }
-
-    try {
-      return DateTime.now().isAfter(
-        DateTime.parse(deadline),
-      );
-    } catch (e) {
-      return true;
-    }
-  }
-
-  Future<void> _applyProposedMenu(
-      Map<String, dynamic> poll,
+  Future<void> _saveMenu(
+      String day,
+      String meal,
+      String newMenu,
       ) async {
     try {
-      final day =
-      poll['day'].toString();
+      final existingMenu =
+      await _firestoreService.get(
+        'menus',
+        day,
+      );
+
+      final Map<String, dynamic>
+      updatedMenu = {};
+
+      if (existingMenu != null) {
+        updatedMenu.addAll(
+          existingMenu,
+        );
+      }
+
+      updatedMenu['day'] =
+          day;
+
+      updatedMenu[
+      meal.toLowerCase()] =
+          newMenu;
+
+      // ------------------------------------------------------
+      // UPDATE ACTUAL MENU
+      // ------------------------------------------------------
 
       await _firestoreService.add(
         'menus',
-        day.toLowerCase(),
-        {
-          'day': day,
-          'items':
-          poll['proposedMenu'],
-        },
+        day,
+        updatedMenu,
       );
 
-      await _firestoreService.update(
-        'menu_polls',
-        poll['id'],
-        {
-          'status': 'applied',
-          'result': 'proposed',
-        },
+      // ------------------------------------------------------
+      // MARK RELATED REQUESTS AS HANDLED
+      // ------------------------------------------------------
+
+      final requests =
+      await _firestoreService.getAll(
+        'menu_change_requests',
       );
+
+      for (final request in requests) {
+        if (request['status'] ==
+            'pending' &&
+            request['day'] == day &&
+            request['meal'] == meal) {
+          await _firestoreService.update(
+            'menu_change_requests',
+            request['id'],
+            {
+              'status': 'handled',
+            },
+          );
+        }
+      }
+
+      // ------------------------------------------------------
+      // RELOAD
+      // ------------------------------------------------------
 
       await _loadData();
 
@@ -288,402 +411,388 @@ class _MenuRequestsScreenState
 
       ScaffoldMessenger.of(context)
           .showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Proposed menu applied successfully.',
+            '$meal menu updated successfully.',
           ),
         ),
       );
     } catch (e) {
-      _showError();
-    }
-  }
-
-  Future<void> _keepCurrentMenu(
-      Map<String, dynamic> poll,
-      ) async {
-    try {
-      await _firestoreService.update(
-        'menu_polls',
-        poll['id'],
-        {
-          'status': 'closed',
-          'result': 'current',
-        },
-      );
-
-      await _loadData();
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context)
           .showSnackBar(
         const SnackBar(
           content: Text(
-            'Current menu kept.',
+            'Failed to update menu.',
           ),
         ),
       );
-    } catch (e) {
-      _showError();
     }
   }
 
-  void _showError() {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Something went wrong.',
-        ),
-      ),
-    );
-  }
+  // ----------------------------------------------------------
+  // BUILD
+  // ----------------------------------------------------------
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+      BuildContext context,
+      ) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Menu Change Requests',
         ),
       ),
+
       body: _isLoading
           ? const Center(
         child:
         CircularProgressIndicator(),
       )
+          : _errorMessage != null
+          ? Center(
+        child: Text(
+          _errorMessage!,
+        ),
+      )
           : RefreshIndicator(
         onRefresh: _loadData,
-        child: ListView(
-          padding:
-          const EdgeInsets.all(16),
+        child: _buildBody(),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // BODY
+  // ----------------------------------------------------------
+
+  Widget _buildBody() {
+    final today =
+    _getToday();
+
+    final tomorrow =
+    _getTomorrow();
+
+    return ListView(
+      padding:
+      const EdgeInsets.all(16),
+
+      children: [
+        // ====================================================
+        // TODAY
+        // ====================================================
+
+        _buildDaySection(
+          title: 'Today',
+          day: today,
+          date: _currentDate,
+          meals: const [
+            'Lunch',
+            'Dinner',
+          ],
+        ),
+
+        const SizedBox(
+          height: 25,
+        ),
+
+        // ====================================================
+        // TOMORROW
+        // ====================================================
+
+        _buildDaySection(
+          title: 'Tomorrow',
+          day: tomorrow,
+          date: _currentDate.add(
+            const Duration(days: 1),
+          ),
+          meals: const [
+            'Breakfast',
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // DAY SECTION
+  // ----------------------------------------------------------
+
+  Widget _buildDaySection({
+    required String title,
+    required String day,
+    required DateTime date,
+    required List<String> meals,
+  }) {
+    return Column(
+      crossAxisAlignment:
+      CrossAxisAlignment.start,
+
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight:
+            FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(
+          height: 5,
+        ),
+
+        Row(
           children: [
-            _requestsSection(),
-            const SizedBox(height: 25),
-            _pollsSection(),
+            const Icon(
+              Icons.calendar_today,
+              size: 18,
+            ),
+
+            const SizedBox(
+              width: 8,
+            ),
+
+            Text(
+              '$day • '
+                  '${date.day.toString().padLeft(2, '0')}/'
+                  '${date.month.toString().padLeft(2, '0')}/'
+                  '${date.year}',
+              style:
+              const TextStyle(
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(
+          height: 12,
+        ),
+
+        ...meals.map(
+              (meal) {
+            return _buildMealCard(
+              day: day,
+              meal: meal,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // MEAL CARD
+  // ----------------------------------------------------------
+
+  Widget _buildMealCard({
+    required String day,
+    required String meal,
+  }) {
+    final currentMenu =
+    _getMealMenu(
+      day,
+      meal,
+    );
+
+    final requestCount =
+    _getRequestCount(
+      day,
+      meal,
+    );
+
+    return Card(
+      margin:
+      const EdgeInsets.only(
+        bottom: 12,
+      ),
+
+      child: Padding(
+        padding:
+        const EdgeInsets.all(16),
+
+        child: Column(
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
+
+          children: [
+            // ------------------------------------------------
+            // MEAL
+            // ------------------------------------------------
+
+            Row(
+              children: [
+                _getMealIcon(meal),
+
+                const SizedBox(
+                  width: 12,
+                ),
+
+                Text(
+                  meal,
+                  style:
+                  const TextStyle(
+                    fontSize: 19,
+                    fontWeight:
+                    FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(
+              height: 15,
+            ),
+
+            // ------------------------------------------------
+            // CURRENT MENU
+            // ------------------------------------------------
+
+            const Text(
+              'Current Menu',
+              style: TextStyle(
+                fontWeight:
+                FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+
+            const SizedBox(
+              height: 6,
+            ),
+
+            Container(
+              width: double.infinity,
+
+              padding:
+              const EdgeInsets.all(
+                12,
+              ),
+
+              decoration:
+              BoxDecoration(
+                border: Border.all(
+                  color:
+                  Colors.grey,
+                ),
+                borderRadius:
+                BorderRadius.circular(
+                  8,
+                ),
+              ),
+
+              child: Text(
+                currentMenu,
+                style:
+                const TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 12,
+            ),
+
+            // ------------------------------------------------
+            // REQUEST COUNT
+            // ------------------------------------------------
+
+            Row(
+              children: [
+                const Icon(
+                  Icons.people_outline,
+                  size: 22,
+                ),
+
+                const SizedBox(
+                  width: 8,
+                ),
+
+                Text(
+                  requestCount == 1
+                      ? '1 Change Request'
+                      : '$requestCount Change Requests',
+
+                  style:
+                  const TextStyle(
+                    fontWeight:
+                    FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(
+              height: 12,
+            ),
+
+            // ------------------------------------------------
+            // CHANGE MENU BUTTON
+            // ------------------------------------------------
+
+            SizedBox(
+              width: double.infinity,
+
+              child:
+              ElevatedButton.icon(
+                onPressed: () {
+                  _changeMenu(
+                    day,
+                    meal,
+                  );
+                },
+
+                icon: const Icon(
+                  Icons.edit,
+                ),
+
+                label:
+                const Text(
+                  'Change Menu',
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _requestsSection() {
-    return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Student Suggestions',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+  // ----------------------------------------------------------
+  // ICON
+  // ----------------------------------------------------------
 
-        const SizedBox(height: 10),
-
-        if (_requests.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'No pending suggestions.',
-              ),
-            ),
-          ),
-
-        ..._requests.map(
-              (request) => Card(
-            margin:
-            const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding:
-              const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    request['studentName'] ??
-                        'Student',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    '${request['day']} - '
-                        '${request['meal']}',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  const Text(
-                    'Current Menu',
-                    style: TextStyle(
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
-                  ),
-
-                  Text(
-                    request['currentMenu'] ??
-                        '',
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    'Proposed Menu',
-                    style: TextStyle(
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
-                  ),
-
-                  Text(
-                    request['proposedMenu'] ??
-                        '',
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    'Reason',
-                    style: TextStyle(
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
-                  ),
-
-                  Text(
-                    request['reason'] ??
-                        '',
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            _rejectRequest(
-                              request['id'],
-                            );
-                          },
-                          child:
-                          const Text(
-                            'Reject',
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child:
-                        ElevatedButton(
-                          onPressed: () {
-                            _createPoll(
-                              request,
-                            );
-                          },
-                          child:
-                          const Text(
-                            'Create Poll',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _pollsSection() {
-    return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Menu Polls',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        if (_polls.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'No menu polls found.',
-              ),
-            ),
-          ),
-
-        ..._polls.map(
-              (poll) => _pollCard(poll),
-        ),
-      ],
-    );
-  }
-
-  Widget _pollCard(
-      Map<String, dynamic> poll,
+  Widget _getMealIcon(
+      String meal,
       ) {
-    return FutureBuilder<
-        Map<String, int>>(
-      future: _getVoteCounts(
-        poll['id'].toString(),
-      ),
-      builder: (context, snapshot) {
-        final counts =
-            snapshot.data ??
-                {
-                  'current': 0,
-                  'proposed': 0,
-                };
-
-        final currentVotes =
-            counts['current'] ?? 0;
-
-        final proposedVotes =
-            counts['proposed'] ?? 0;
-
-        final expired =
-        _isExpired(poll);
-
-        return Card(
-          margin:
-          const EdgeInsets.only(
-            bottom: 12,
-          ),
-          child: Padding(
-            padding:
-            const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${poll['day']} - '
-                      '${poll['meal']}',
-                  style:
-                  const TextStyle(
-                    fontSize: 18,
-                    fontWeight:
-                    FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  'Current: '
-                      '${poll['currentMenu']}',
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  'Proposed: '
-                      '${poll['proposedMenu']}',
-                ),
-
-                const SizedBox(height: 15),
-
-                Text(
-                  'Keep Current: '
-                      '$currentVotes votes',
-                ),
-
-                Text(
-                  'Change Menu: '
-                      '$proposedVotes votes',
-                ),
-
-                const SizedBox(height: 10),
-
-                Text(
-                  expired
-                      ? 'Voting ended'
-                      : 'Voting is active',
-                  style: TextStyle(
-                    fontWeight:
-                    FontWeight.bold,
-                    color: expired
-                        ? Colors.red
-                        : Colors.green,
-                  ),
-                ),
-
-                if (expired &&
-                    poll['status'] ==
-                        'active') ...[
-                  const SizedBox(height: 15),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child:
-                        OutlinedButton(
-                          onPressed: () {
-                            _keepCurrentMenu(
-                              poll,
-                            );
-                          },
-                          child:
-                          const Text(
-                            'Keep Current',
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child:
-                        ElevatedButton(
-                          onPressed:
-                          proposedVotes >
-                              currentVotes
-                              ? () {
-                            _applyProposedMenu(
-                              poll,
-                            );
-                          }
-                              : null,
-                          child:
-                          const Text(
-                            'Apply Proposed',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
+    switch (meal) {
+      case 'Breakfast':
+        return const Icon(
+          Icons.free_breakfast,
+          size: 30,
         );
-      },
-    );
+
+      case 'Lunch':
+        return const Icon(
+          Icons.lunch_dining,
+          size: 30,
+        );
+
+      case 'Dinner':
+        return const Icon(
+          Icons.dinner_dining,
+          size: 30,
+        );
+
+      default:
+        return const Icon(
+          Icons.restaurant,
+          size: 30,
+        );
+    }
   }
 }

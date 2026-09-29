@@ -412,22 +412,32 @@ class _ManagerProfileState extends State<ManagerProfile> {
 
       if (!mounted) return;
 
-      Navigator.pushNamedAndRemoveUntil(
-        context,
+      Navigator.of(context).pushNamedAndRemoveUntil(
         '/login',
             (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Logout failed: ${e.message ?? e.code}',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to logout.'),
+        SnackBar(
+          content: Text(
+            'Logout failed: $e',
+          ),
         ),
       );
     }
   }
-
   // ------------------------------------------------------------
   // UI
   // ------------------------------------------------------------
