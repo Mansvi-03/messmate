@@ -408,15 +408,20 @@ class _ManagerProfileState extends State<ManagerProfile> {
 
   Future<void> _logout() async {
     try {
+      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
 
+      // Go back to the login screen
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/login',
             (route) => false,
       );
     } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase logout error: ${e.code}');
+      debugPrint('Message: ${e.message}');
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -427,6 +432,8 @@ class _ManagerProfileState extends State<ManagerProfile> {
         ),
       );
     } catch (e) {
+      debugPrint('Logout/navigation error: $e');
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

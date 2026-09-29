@@ -236,13 +236,18 @@ class AuthProvider extends ChangeNotifier {
   // =========================
 
   Future<void> logout() async {
-    await _authService.logout();
+    try {
+      await _authService.logout();
 
-    _user = null;
-    _userRole = null;
-    _errorMessage = null;
+      _user = null;
+      _userRole = null;
+      _errorMessage = null;
 
-    notifyListeners();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('LOGOUT ERROR: $e');
+      rethrow;
+    }
   }
 
   // =========================

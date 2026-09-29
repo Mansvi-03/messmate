@@ -65,4 +65,24 @@ class FirestoreService {
       };
     }).toList();
   }
+
+  Future<List<Map<String, dynamic>>> whereEquals(
+    String collection,
+    String field,
+    dynamic value,
+  ) async {
+    final snapshot = await _firestore
+        .collection(collection)
+        .where(field, isEqualTo: value)
+        .get();
+
+    return snapshot.docs.map((document) {
+      return {
+        'id': document.id,
+        ...document.data(),
+      };
+    }).toList();
+  }
+
+  FirebaseFirestore get firestore => _firestore;
 }
