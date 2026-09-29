@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/firestore_service.dart';
@@ -11,265 +10,24 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final FirestoreService _firestoreService =
+  FirestoreService();
 
   bool _isLoading = true;
 
-  // Stores all menus from Firestore.
-  final Map<String, Map<String, dynamic>> _menus = {};
+  Map<String, dynamic>? _todayMenu;
 
-  // Stores whether the current student already has
-  // a pending request for a particular day + meal.
-  final Map<String, bool> _pendingRequests = {};
+  final List<String> _meals = [
+    'Breakfast',
+    'Lunch',
+    'Dinner',
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadMenu();
   }
-
-  // ------------------------------------------------------------
-  // LOAD MENU AND STUDENT REQUESTS
-  // ------------------------------------------------------------
-
-  Future<void> _loadMenu() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Load menus
-      final menuData = await _firestoreService.getAll('menus');
-
-      _menus.clear();
-
-      for (final menu in menuData) {
-        final day = menu['day'];
-
-        if (day != null) {
-          _menus[day.toString()] = menu;
-        }
-      }
-
-      // Load current student's requests
-      final user = FirebaseAuth.instance.currentUser;
-
-      _pendingRequests.clear();
-
-      if (user != null) {
-        final requests = await _firestoreService.getAll(
-          'menu_change_requests',
-        );
-
-        for (final request in requests) {
-          if (request['studentId'] == user.uid &&
-              request['status'] == 'pending') {
-            final day = request['day'];
-            final meal = request['meal'];
-
-            if (day != null && meal != null) {
-              final key =
-                  '${day.toString()}-${meal.toString().toLowerCase()}';
-
-              _pendingRequests[key] = true;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to load menu: $e',
-          ),
-        ),
-      );
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
-  // ------------------------------------------------------------
-  // GET MEAL MENU
-  // ------------------------------------------------------------
-
-  String _getMealMenu(
-      String day,
-      String meal,
-      ) {
-    final dayMenu = _menus[day];
-
-    if (dayMenu == null) {
-      return 'No menu added';
-    }
-
-    final menu = dayMenu[meal.toLowerCase()];
-
-    if (menu == null ||
-        menu.toString().trim().isEmpty) {
-      return 'No menu added';
-    }
-
-    return menu.toString();
-  }
-
-  // ------------------------------------------------------------
-  // CHECK IF STUDENT ALREADY REQUESTED
-  // ------------------------------------------------------------
-
-  bool _hasPendingRequest(
-      String day,
-      String meal,
-      ) {
-    final key =
-        '${day}-${meal.toLowerCase()}';
-
-    return _pendingRequests[key] == true;
-  }
-
-  // ------------------------------------------------------------
-  // REQUEST MENU CHANGE
-  // ------------------------------------------------------------
-
-  Future<void> _requestMenuChange(
-      String day,
-      String meal,
-      ) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please login first.',
-          ),
-        ),
-      );
-
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // CHECK IF REQUEST ALREADY EXISTS
-    // ----------------------------------------------------------
-
-    try {
-      final requests = await _firestoreService.getAll(
-        'menu_change_requests',
-      );
-
-      final alreadyRequested = requests.any(
-            (request) {
-          return request['studentId'] == user.uid &&
-              request['day'] == day &&
-              request['meal'] == meal &&
-              request['status'] == 'pending';
-        },
-      );
-
-      if (alreadyRequested) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'You have already requested a change for this menu.',
-            ),
-          ),
-        );
-
-        return;
-      }
-
-      // --------------------------------------------------------
-      // GET STUDENT INFORMATION
-      // --------------------------------------------------------
-
-      final studentData = await _firestoreService.get(
-        'students',
-        user.uid,
-      );
-
-      if (studentData == null) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Student profile not found.',
-            ),
-          ),
-        );
-
-        return;
-      }
-
-      // --------------------------------------------------------
-      // CREATE REQUEST
-      // --------------------------------------------------------
-
-      final requestId =
-          '${user.uid}_${day}_$meal';
-
-      await _firestoreService.add(
-        'menu_change_requests',
-        requestId,
-        {
-          'studentId': user.uid,
-          'studentName': studentData['name'] ?? '',
-          'day': day,
-          'meal': meal,
-          'currentMenu': _getMealMenu(
-            day,
-            meal,
-          ),
-          'createdAt':
-          DateTime.now().toIso8601String(),
-          'status': 'pending',
-        },
-      );
-
-      // Mark this meal as having a pending request
-      final key =
-          '${day}-${meal.toLowerCase()}';
-
-      _pendingRequests[key] = true;
-
-      if (!mounted) return;
-
-      setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Menu change request submitted successfully.',
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to submit request: $e',
-          ),
-        ),
-      );
-    }
-  }
-
-  // ------------------------------------------------------------
-  // GET TODAY
-  // ------------------------------------------------------------
 
   String _getToday() {
     const days = [
@@ -285,164 +43,169 @@ class _MenuScreenState extends State<MenuScreen> {
     return days[DateTime.now().weekday - 1];
   }
 
-  // ------------------------------------------------------------
-  // GET TOMORROW
-  // ------------------------------------------------------------
+  Future<void> _loadMenu() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  String _getTomorrow() {
-    const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
+    try {
+      final today = _getToday();
 
-    final tomorrow =
-    DateTime.now().add(
-      const Duration(days: 1),
-    );
+      final menu =
+      await _firestoreService.get(
+        'menus',
+        today,
+      );
 
-    return days[tomorrow.weekday - 1];
+      if (!mounted) return;
+
+      setState(() {
+        _todayMenu = menu;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to load menu: $e',
+          ),
+        ),
+      );
+    }
   }
 
-  // ------------------------------------------------------------
-  // MENU CARD
-  // ------------------------------------------------------------
+  Map<String, dynamic>? _getMealData(
+      String meal,
+      ) {
+    if (_todayMenu == null) {
+      return null;
+    }
 
-  Widget _buildMenuCard({
-    required String day,
-    required String meal,
-    required IconData icon,
-  }) {
-    final menu = _getMealMenu(
-      day,
-      meal,
-    );
+    final value =
+    _todayMenu![meal.toLowerCase()];
 
-    final hasPendingRequest =
-    _hasPendingRequest(
-      day,
-      meal,
-    );
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+
+    // Old menu format support.
+    if (value != null) {
+      return {
+        'menu': value.toString(),
+        'price': 0,
+      };
+    }
+
+    return null;
+  }
+
+  String _getMenu(String meal) {
+    final data = _getMealData(meal);
+
+    if (data == null) {
+      return 'No menu added';
+    }
+
+    final menu =
+    data['menu']?.toString().trim();
+
+    if (menu == null || menu.isEmpty) {
+      return 'No menu added';
+    }
+
+    return menu;
+  }
+
+  double _getPrice(String meal) {
+    final data = _getMealData(meal);
+
+    if (data == null) {
+      return 0;
+    }
+
+    final price = data['price'];
+
+    if (price is num) {
+      return price.toDouble();
+    }
+
+    return double.tryParse(
+      price?.toString() ?? '',
+    ) ??
+        0;
+  }
+
+  IconData _getMealIcon(String meal) {
+    switch (meal) {
+      case 'Breakfast':
+        return Icons.free_breakfast;
+
+      case 'Lunch':
+        return Icons.lunch_dining;
+
+      case 'Dinner':
+        return Icons.dinner_dining;
+
+      default:
+        return Icons.restaurant;
+    }
+  }
+
+  Widget _buildMealCard(String meal) {
+    final menu = _getMenu(meal);
+    final price = _getPrice(meal);
 
     return Card(
-      margin: const EdgeInsets.only(
-        bottom: 16,
-      ),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          16,
-        ),
-      ),
+      margin:
+      const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: const EdgeInsets.all(
-          16,
-        ),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment:
           CrossAxisAlignment.start,
           children: [
-            // --------------------------------------------------
-            // MEAL NAME
-            // --------------------------------------------------
-
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(
-                    10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius:
-                    BorderRadius.circular(
-                      12,
-                    ),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.orange,
-                  ),
+                Icon(
+                  _getMealIcon(meal),
+                  size: 30,
                 ),
                 const SizedBox(width: 12),
                 Text(
                   meal,
                   style: const TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                    FontWeight.bold,
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 16),
-
-            // --------------------------------------------------
-            // CURRENT MENU
-            // --------------------------------------------------
-
-            const Text(
-              'Current Menu',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(
-                14,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius:
-                BorderRadius.circular(
-                  10,
-                ),
-              ),
-              child: Text(
-                menu,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            ),
-
             const SizedBox(height: 14),
 
-            // --------------------------------------------------
-            // REQUEST BUTTON
-            // --------------------------------------------------
+            Text(
+              menu,
+              style: const TextStyle(
+                fontSize: 17,
+              ),
+            ),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: hasPendingRequest
-                    ? null
-                    : () {
-                  _requestMenuChange(
-                    day,
-                    meal,
-                  );
-                },
-                icon: Icon(
-                  hasPendingRequest
-                      ? Icons.check
-                      : Icons.edit,
-                ),
-                label: Text(
-                  hasPendingRequest
-                      ? 'Request Already Sent'
-                      : 'Request Change',
-                ),
+            const SizedBox(height: 8),
+
+            Text(
+              price > 0
+                  ? 'Price: ₹${price.toStringAsFixed(2)}'
+                  : 'Price not available',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -451,14 +214,9 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ------------------------------------------------------------
-  // BUILD
-  // ------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     final today = _getToday();
-    final tomorrow = _getTomorrow();
 
     return Scaffold(
       appBar: AppBar(
@@ -467,7 +225,6 @@ class _MenuScreenState extends State<MenuScreen> {
         ),
         centerTitle: true,
       ),
-
       body: _isLoading
           ? const Center(
         child: CircularProgressIndicator(),
@@ -475,59 +232,24 @@ class _MenuScreenState extends State<MenuScreen> {
           : RefreshIndicator(
         onRefresh: _loadMenu,
         child: ListView(
-          padding: const EdgeInsets.all(
-            16,
-          ),
+          physics:
+          const AlwaysScrollableScrollPhysics(),
+          padding:
+          const EdgeInsets.all(16),
           children: [
-            // =================================================
-            // TODAY
-            // =================================================
-
             Text(
               'Today - $today',
               style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+                fontSize: 24,
+                fontWeight:
+                FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // TODAY LUNCH
-            _buildMenuCard(
-              day: today,
-              meal: 'Lunch',
-              icon: Icons.lunch_dining,
-            ),
-
-            // TODAY DINNER
-            _buildMenuCard(
-              day: today,
-              meal: 'Dinner',
-              icon: Icons.dinner_dining,
-            ),
-
-            const SizedBox(height: 12),
-
-            // =================================================
-            // TOMORROW
-            // =================================================
-
-            Text(
-              'Tomorrow - $tomorrow',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // TOMORROW BREAKFAST
-            _buildMenuCard(
-              day: tomorrow,
-              meal: 'Breakfast',
-              icon: Icons.free_breakfast,
+            ..._meals.map(
+              _buildMealCard,
             ),
           ],
         ),

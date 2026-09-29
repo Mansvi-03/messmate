@@ -11,40 +11,56 @@ class BillScreen extends StatefulWidget {
 }
 
 class _BillScreenState extends State<BillScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-
-  List<Map<String, dynamic>> _bills = [];
+  final FirestoreService _firestoreService =
+  FirestoreService();
 
   bool _isLoading = true;
   String? _errorMessage;
 
+  List<Map<String, dynamic>> _attendance =
+  [];
+
   @override
   void initState() {
     super.initState();
-    _loadBills();
+    _loadBill();
   }
 
-  Future<void> _loadBills() async {
+  Future<void> _loadBill() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user =
+          FirebaseAuth.instance.currentUser;
 
       if (user == null) {
+        if (!mounted) return;
+
         setState(() {
-          _errorMessage = 'Student is not logged in.';
+          _errorMessage =
+          'Student is not logged in.';
           _isLoading = false;
         });
+
         return;
       }
 
-      final data = await _firestoreService.getAll('bills');
+      final data =
+      await _firestoreService.getAll(
+        'attendance',
+      );
 
-      final studentBills = data.where((bill) {
-        return bill['studentId'] == user.uid;
+      final studentAttendance =
+      data.where((item) {
+        return item['studentId'] ==
+            user.uid &&
+            item['present'] == true;
       }).toList();
 
-      studentBills.sort((a, b) {
-        final dateA = a['createdAt']?.toString() ?? '';
-        final dateB = b['createdAt']?.toString() ?? '';
+      studentAttendance.sort((a, b) {
+        final dateA =
+            a['date']?.toString() ?? '';
+
+        final dateB =
+            b['date']?.toString() ?? '';
 
         return dateB.compareTo(dateA);
       });
@@ -52,90 +68,75 @@ class _BillScreenState extends State<BillScreen> {
       if (!mounted) return;
 
       setState(() {
-        _bills = studentBills;
+        _attendance =
+            studentAttendance;
         _isLoading = false;
+        _errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'Failed to load bills.';
+        _errorMessage =
+        'Failed to load bill: $e';
         _isLoading = false;
       });
     }
   }
 
+  double _getPrice(
+      Map<String, dynamic> item,
+      ) {
+    final price = item['price'];
+
+    if (price is num) {
+      return price.toDouble();
+    }
+
+    return double.tryParse(
+      price?.toString() ?? '',
+    ) ??
+        0;
+  }
+
+  double get _totalAmount {
+    return _attendance.fold(
+      0,
+          (total, item) {
+        return total + _getPrice(item);
+      },
+    );
+  }
+
   String _formatDate(String date) {
     try {
-      final dateTime = DateTime.parse(date);
+      final dateTime =
+      DateTime.parse(date);
 
-      const months = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ];
-
-      return '${months[dateTime.month - 1]} ${dateTime.year}';
-    } catch (e) {
+      return '${dateTime.day.toString().padLeft(2, '0')}/'
+          '${dateTime.month.toString().padLeft(2, '0')}/'
+          '${dateTime.year}';
+    } catch (_) {
       return date;
     }
   }
 
-  double _getAmount(Map<String, dynamic> bill) {
-    final amount = bill['amount'];
-
-    if (amount is num) {
-      return amount.toDouble();
+  String _formatMeal(String meal) {
+    if (meal.isEmpty) {
+      return 'Meal';
     }
 
-    return double.tryParse(amount.toString()) ?? 0;
-  }
-
-  double get _totalAmount {
-    return _bills.fold(
-      0,
-          (total, bill) => total + _getAmount(bill),
-    );
-  }
-
-  double get _paidAmount {
-    return _bills
-        .where(
-          (bill) =>
-      bill['status']?.toString().toLowerCase() == 'paid',
-    )
-        .fold(
-      0,
-          (total, bill) => total + _getAmount(bill),
-    );
-  }
-
-  double get _unpaidAmount {
-    return _bills
-        .where(
-          (bill) =>
-      bill['status']?.toString().toLowerCase() == 'unpaid',
-    )
-        .fold(
-      0,
-          (total, bill) => total + _getAmount(bill),
-    );
+    return meal[0].toUpperCase() +
+        meal.substring(1).toLowerCase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Bills'),
+        title: const Text(
+          'My Bill',
+        ),
       ),
       body: _buildBody(),
     );
@@ -155,20 +156,22 @@ class _BillScreenState extends State<BillScreen> {
           style: const TextStyle(
             fontSize: 16,
           ),
+          textAlign: TextAlign.center,
         ),
       );
     }
 
-    if (_bills.isEmpty) {
+    if (_attendance.isEmpty) {
       return RefreshIndicator(
-        onRefresh: _loadBills,
+        onRefresh: _loadBill,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics:
+          const AlwaysScrollableScrollPhysics(),
           children: const [
-            SizedBox(height: 200),
+            SizedBox(height: 220),
             Center(
               child: Text(
-                'No bills found.',
+                'No meals taken yet.',
               ),
             ),
           ],
@@ -177,120 +180,118 @@ class _BillScreenState extends State<BillScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadBills,
+      onRefresh: _loadBill,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding:
+        const EdgeInsets.all(20),
         children: [
           const Text(
             'Bill Summary',
             style: TextStyle(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+              FontWeight.bold,
             ),
           ),
 
           const SizedBox(height: 20),
 
-          _summaryCard(
-            'Total Amount',
-            _totalAmount,
+          Card(
+            child: Padding(
+              padding:
+              const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment:
+                MainAxisAlignment
+                    .spaceBetween,
+                children: [
+                  const Text(
+                    'Total Bill',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                      FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '₹${_totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight:
+                      FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
-          _summaryCard(
-            'Paid Amount',
-            _paidAmount,
-          ),
-
-          _summaryCard(
-            'Unpaid Amount',
-            _unpaidAmount,
-          ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           const Text(
-            'Bill History',
+            'Meal History',
             style: TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+              FontWeight.bold,
             ),
           ),
 
           const SizedBox(height: 10),
 
-          ..._bills.map(
-                (bill) => _billCard(bill),
+          ..._attendance.map(
+                (item) {
+              final date =
+                  item['date']?.toString() ??
+                      '';
+
+              final meal =
+                  item['meal']?.toString() ??
+                      '';
+
+              final menu =
+                  item['menu']?.toString() ??
+                      '';
+
+              final price =
+              _getPrice(item);
+
+              return Card(
+                margin:
+                const EdgeInsets.only(
+                  bottom: 10,
+                ),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.restaurant,
+                  ),
+                  title: Text(
+                    _formatMeal(meal),
+                    style:
+                    const TextStyle(
+                      fontWeight:
+                      FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${_formatDate(date)}\n'
+                        '$menu',
+                  ),
+                  isThreeLine: true,
+                  trailing: Text(
+                    '₹${price.toStringAsFixed(2)}',
+                    style:
+                    const TextStyle(
+                      fontWeight:
+                      FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _summaryCard(String title, double amount) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              '₹${amount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _billCard(Map<String, dynamic> bill) {
-    final amount = _getAmount(bill);
-
-    final status =
-        bill['status']?.toString() ?? 'Unknown';
-
-    final createdAt =
-        bill['createdAt']?.toString() ?? '';
-
-    final isPaid =
-        status.toLowerCase() == 'paid';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: const Icon(
-          Icons.receipt_long,
-        ),
-        title: Text(
-          '₹${amount.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          createdAt.isEmpty
-              ? 'Date not available'
-              : _formatDate(createdAt),
-        ),
-        trailing: Text(
-          status,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isPaid
-                ? Colors.green
-                : Colors.red,
-          ),
-        ),
       ),
     );
   }

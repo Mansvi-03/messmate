@@ -6,18 +6,11 @@ class MenuManagement extends StatefulWidget {
   const MenuManagement({super.key});
 
   @override
-  State<MenuManagement> createState() =>
-      _MenuManagementState();
+  State<MenuManagement> createState() => _MenuManagementState();
 }
 
-class _MenuManagementState
-    extends State<MenuManagement> {
-  final FirestoreService _firestoreService =
-  FirestoreService();
-
-  // ----------------------------------------------------------
-  // DAYS
-  // ----------------------------------------------------------
+class _MenuManagementState extends State<MenuManagement> {
+  final FirestoreService _firestoreService = FirestoreService();
 
   final List<String> _days = [
     'Monday',
@@ -29,21 +22,12 @@ class _MenuManagementState
     'Sunday',
   ];
 
-  // ----------------------------------------------------------
-  // MENU DATA
-  // ----------------------------------------------------------
-
   Map<String, Map<String, dynamic>> _menu = {};
 
   DateTime _currentDate = DateTime.now();
 
   bool _isLoading = true;
-
   String? _errorMessage;
-
-  // ----------------------------------------------------------
-  // INITIALIZE
-  // ----------------------------------------------------------
 
   @override
   void initState() {
@@ -51,17 +35,11 @@ class _MenuManagementState
     _loadMenu();
   }
 
-  // ----------------------------------------------------------
-  // LOAD MENU
-  // ----------------------------------------------------------
-
   Future<void> _loadMenu() async {
     try {
-      final menuData =
-      await _firestoreService.getAll('menus');
+      final menuData = await _firestoreService.getAll('menus');
 
-      final Map<String, Map<String, dynamic>>
-      loadedMenu = {};
+      final Map<String, Map<String, dynamic>> loadedMenu = {};
 
       for (final item in menuData) {
         final day = item['day']?.toString();
@@ -84,74 +62,93 @@ class _MenuManagementState
 
       setState(() {
         _isLoading = false;
-        _errorMessage =
-        'Failed to load menu.';
+        _errorMessage = 'Failed to load menu.';
       });
     }
   }
-
-  // ----------------------------------------------------------
-  // GET TODAY
-  // ----------------------------------------------------------
 
   String _getToday() {
     return _days[_currentDate.weekday - 1];
   }
 
-  // ----------------------------------------------------------
-  // GET TOMORROW
-  // ----------------------------------------------------------
-
   String _getTomorrow() {
-    final tomorrow =
-    _currentDate.add(
+    final tomorrow = _currentDate.add(
       const Duration(days: 1),
     );
 
     return _days[tomorrow.weekday - 1];
   }
 
-  // ----------------------------------------------------------
-  // GET MENU
-  // ----------------------------------------------------------
-
-  String _getMealMenu(
+  Map<String, dynamic>? _getMealData(
       String day,
       String meal,
       ) {
     final dayMenu = _menu[day];
 
     if (dayMenu == null) {
-      return 'No menu added';
+      return null;
     }
 
-    final value =
-    dayMenu[meal.toLowerCase()]
-        ?.toString()
-        .trim();
+    final value = dayMenu[meal.toLowerCase()];
 
-    if (value == null || value.isEmpty) {
-      return 'No menu added';
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
     }
 
-    return value;
+    // Supports your old format:
+    // "lunch": "dal, chaval"
+    if (value != null) {
+      return {
+        'menu': value.toString(),
+        'price': 0,
+      };
+    }
+
+    return null;
   }
 
-  // ----------------------------------------------------------
-  // GET EDITABLE MEALS
-  //
-  // NO TIME LIMIT
-  //
-  // TODAY:
-  // Lunch
-  // Dinner
-  //
-  // TOMORROW:
-  // Breakfast
-  // ----------------------------------------------------------
+  String _getMealMenu(
+      String day,
+      String meal,
+      ) {
+    final data = _getMealData(day, meal);
 
-  List<Map<String, String>>
-  _getEditableMeals() {
+    if (data == null) {
+      return 'No menu added';
+    }
+
+    final menu = data['menu']?.toString().trim();
+
+    if (menu == null || menu.isEmpty) {
+      return 'No menu added';
+    }
+
+    return menu;
+  }
+
+  double _getMealPrice(
+      String day,
+      String meal,
+      ) {
+    final data = _getMealData(day, meal);
+
+    if (data == null) {
+      return 0;
+    }
+
+    final price = data['price'];
+
+    if (price is num) {
+      return price.toDouble();
+    }
+
+    return double.tryParse(
+      price?.toString() ?? '',
+    ) ??
+        0;
+  }
+
+  List<Map<String, String>> _getEditableMeals() {
     final today = _getToday();
     final tomorrow = _getTomorrow();
 
@@ -171,13 +168,7 @@ class _MenuManagementState
     ];
   }
 
-  // ----------------------------------------------------------
-  // MEAL ICON
-  // ----------------------------------------------------------
-
-  IconData _getMealIcon(
-      String meal,
-      ) {
+  IconData _getMealIcon(String meal) {
     switch (meal) {
       case 'Breakfast':
         return Icons.free_breakfast;
@@ -193,39 +184,30 @@ class _MenuManagementState
     }
   }
 
-  // ----------------------------------------------------------
-  // SAVE MENU
-  // ----------------------------------------------------------
-
   Future<void> _saveMenu(
       String day,
       String meal,
       String menuText,
+      double price,
       ) async {
     try {
-      final existingMenu =
-      await _firestoreService.get(
+      final existingMenu = await _firestoreService.get(
         'menus',
         day,
       );
 
-      final Map<String, dynamic>
-      updatedMenu = {};
+      final Map<String, dynamic> updatedMenu = {};
 
-      // Keep existing data.
       if (existingMenu != null) {
-        updatedMenu.addAll(
-          existingMenu,
-        );
+        updatedMenu.addAll(existingMenu);
       }
 
-      // Store day.
       updatedMenu['day'] = day;
 
-      // Update only selected meal.
-      updatedMenu[
-      meal.toLowerCase()] =
-          menuText.trim();
+      updatedMenu[meal.toLowerCase()] = {
+        'menu': menuText.trim(),
+        'price': price,
+      };
 
       await _firestoreService.add(
         'menus',
@@ -239,8 +221,7 @@ class _MenuManagementState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Menu updated successfully.',
@@ -250,37 +231,40 @@ class _MenuManagementState
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(
-            'Failed to update menu.',
+            'Failed to update menu: $e',
           ),
         ),
       );
     }
   }
 
-  // ----------------------------------------------------------
-  // EDIT MENU
-  // ----------------------------------------------------------
-
   void _openEditMenu(
       String day,
       String meal,
       ) {
-    final currentMenu =
-    _getMealMenu(
+    final currentMenu = _getMealMenu(
       day,
       meal,
     );
 
-    final controller =
-    TextEditingController(
-      text: currentMenu ==
-          'No menu added'
+    final currentPrice = _getMealPrice(
+      day,
+      meal,
+    );
+
+    final menuController = TextEditingController(
+      text: currentMenu == 'No menu added'
           ? ''
           : currentMenu,
+    );
+
+    final priceController = TextEditingController(
+      text: currentPrice > 0
+          ? currentPrice.toString()
+          : '',
     );
 
     showDialog(
@@ -297,92 +281,113 @@ class _MenuManagementState
               title: Text(
                 'Edit $meal',
               ),
-
-              content:
-              SingleChildScrollView(
+              content: SingleChildScrollView(
                 child: Column(
-                  mainAxisSize:
-                  MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment:
                   CrossAxisAlignment.start,
                   children: [
                     Text(
                       day,
-                      style:
-                      const TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight:
                         FontWeight.bold,
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 16,
-                    ),
+                    const SizedBox(height: 16),
 
                     TextField(
-                      controller:
-                      controller,
-
+                      controller: menuController,
                       maxLines: 4,
-
                       decoration:
                       InputDecoration(
                         labelText:
                         '$meal Menu',
-
                         hintText:
                         'Enter $meal menu',
-
                         border:
                         const OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller:
+                      priceController,
+                      keyboardType:
+                      const TextInputType
+                          .numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration:
+                      const InputDecoration(
+                        labelText: 'Price',
+                        hintText:
+                        'Enter meal price',
+                        prefixText: '₹ ',
+                        border:
+                        OutlineInputBorder(),
                       ),
                     ),
                   ],
                 ),
               ),
-
               actions: [
                 TextButton(
-                  onPressed:
-                  isSaving
+                  onPressed: isSaving
                       ? null
                       : () {
-                    controller
-                        .dispose();
-
                     Navigator.pop(
                       dialogContext,
                     );
                   },
                   child:
-                  const Text(
-                    'Cancel',
-                  ),
+                  const Text('Cancel'),
                 ),
 
                 ElevatedButton(
                   onPressed: isSaving
                       ? null
                       : () async {
-                    final value =
-                    controller
+                    final menu =
+                    menuController
                         .text
                         .trim();
 
-                    if (value.isEmpty) {
+                    final price =
+                    double.tryParse(
+                      priceController
+                          .text
+                          .trim(),
+                    );
+
+                    if (menu.isEmpty) {
                       ScaffoldMessenger
-                          .of(
-                        context,
-                      ).showSnackBar(
+                          .of(context)
+                          .showSnackBar(
                         const SnackBar(
-                          content:
-                          Text(
+                          content: Text(
                             'Please enter the menu.',
                           ),
                         ),
                       );
+                      return;
+                    }
 
+                    if (price == null ||
+                        price <= 0) {
+                      ScaffoldMessenger
+                          .of(context)
+                          .showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please enter a valid price.',
+                          ),
+                        ),
+                      );
                       return;
                     }
 
@@ -393,21 +398,16 @@ class _MenuManagementState
                     await _saveMenu(
                       day,
                       meal,
-                      value,
+                      menu,
+                      price,
                     );
 
-                    if (!mounted) {
-                      return;
-                    }
-
-                    controller
-                        .dispose();
+                    if (!mounted) return;
 
                     Navigator.pop(
                       dialogContext,
                     );
                   },
-
                   child: isSaving
                       ? const SizedBox(
                     height: 20,
@@ -417,9 +417,7 @@ class _MenuManagementState
                       strokeWidth: 2,
                     ),
                   )
-                      : const Text(
-                    'Save',
-                  ),
+                      : const Text('Save'),
                 ),
               ],
             );
@@ -429,34 +427,22 @@ class _MenuManagementState
     );
   }
 
-  // ----------------------------------------------------------
-  // BUILD
-  // ----------------------------------------------------------
-
   @override
-  Widget build(
-      BuildContext context,
-      ) {
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Menu Management',
         ),
       ),
-
       body: _buildBody(),
     );
   }
 
-  // ----------------------------------------------------------
-  // BODY
-  // ----------------------------------------------------------
-
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child:
-        CircularProgressIndicator(),
+        child: CircularProgressIndicator(),
       );
     }
 
@@ -471,42 +457,26 @@ class _MenuManagementState
     final editableMeals =
     _getEditableMeals();
 
-    final today =
-    _getToday();
+    final today = _getToday();
+    final tomorrow = _getTomorrow();
 
-    final tomorrow =
-    _getTomorrow();
-
-    final todayMeals =
-    editableMeals
+    final todayMeals = editableMeals
         .where(
-          (item) =>
-      item['day'] ==
-          today,
+          (item) => item['day'] == today,
     )
         .toList();
 
-    final tomorrowMeals =
-    editableMeals
+    final tomorrowMeals = editableMeals
         .where(
-          (item) =>
-      item['day'] ==
-          tomorrow,
+          (item) => item['day'] == tomorrow,
     )
         .toList();
 
     return RefreshIndicator(
       onRefresh: _loadMenu,
-
       child: ListView(
-        padding:
-        const EdgeInsets.all(16),
-
+        padding: const EdgeInsets.all(16),
         children: [
-          // --------------------------------------------------
-          // TODAY
-          // --------------------------------------------------
-
           _buildDaySection(
             title: 'Today',
             day: today,
@@ -514,13 +484,7 @@ class _MenuManagementState
             meals: todayMeals,
           ),
 
-          const SizedBox(
-            height: 24,
-          ),
-
-          // --------------------------------------------------
-          // TOMORROW
-          // --------------------------------------------------
+          const SizedBox(height: 24),
 
           _buildDaySection(
             title: 'Tomorrow',
@@ -535,10 +499,6 @@ class _MenuManagementState
     );
   }
 
-  // ----------------------------------------------------------
-  // DAY SECTION
-  // ----------------------------------------------------------
-
   Widget _buildDaySection({
     required String title,
     required String day,
@@ -549,24 +509,16 @@ class _MenuManagementState
     return Column(
       crossAxisAlignment:
       CrossAxisAlignment.start,
-
       children: [
-        // ----------------------------------------------------
-        // TITLE
-        // ----------------------------------------------------
-
         Text(
           title,
           style: const TextStyle(
             fontSize: 24,
-            fontWeight:
-            FontWeight.bold,
+            fontWeight: FontWeight.bold,
           ),
         ),
 
-        const SizedBox(
-          height: 4,
-        ),
+        const SizedBox(height: 4),
 
         Text(
           '$day • '
@@ -578,21 +530,18 @@ class _MenuManagementState
           ),
         ),
 
-        const SizedBox(
-          height: 12,
-        ),
-
-        // ----------------------------------------------------
-        // MEALS
-        // ----------------------------------------------------
+        const SizedBox(height: 12),
 
         ...meals.map(
               (item) {
-            final meal =
-            item['meal']!;
+            final meal = item['meal']!;
 
-            final menu =
-            _getMealMenu(
+            final menu = _getMealMenu(
+              day,
+              meal,
+            );
+
+            final price = _getMealPrice(
               day,
               meal,
             );
@@ -602,56 +551,35 @@ class _MenuManagementState
               const EdgeInsets.only(
                 bottom: 12,
               ),
-
               child: Padding(
                 padding:
-                const EdgeInsets.all(
-                  16,
-                ),
-
+                const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
-
+                  CrossAxisAlignment.start,
                   children: [
-                    // ----------------------------------------
-                    // MEAL
-                    // ----------------------------------------
-
                     Row(
                       children: [
                         Icon(
-                          _getMealIcon(
-                            meal,
-                          ),
+                          _getMealIcon(meal),
                           size: 30,
                         ),
-
                         const SizedBox(
                           width: 12,
                         ),
-
                         Text(
                           meal,
                           style:
                           const TextStyle(
                             fontSize: 19,
                             fontWeight:
-                            FontWeight
-                                .bold,
+                            FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(
-                      height: 10,
-                    ),
-
-                    // ----------------------------------------
-                    // CURRENT MENU
-                    // ----------------------------------------
+                    const SizedBox(height: 10),
 
                     Text(
                       menu,
@@ -661,34 +589,34 @@ class _MenuManagementState
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 12,
-                    ),
+                    if (price > 0) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Price: ₹${price.toStringAsFixed(2)}',
+                        style:
+                        const TextStyle(
+                          fontWeight:
+                          FontWeight.bold,
+                        ),
+                      ),
+                    ],
 
-                    // ----------------------------------------
-                    // EDIT BUTTON
-                    // ----------------------------------------
+                    const SizedBox(height: 12),
 
                     SizedBox(
-                      width:
-                      double.infinity,
-
+                      width: double.infinity,
                       child:
-                      OutlinedButton
-                          .icon(
+                      OutlinedButton.icon(
                         onPressed: () {
                           _openEditMenu(
                             day,
                             meal,
                           );
                         },
-
                         icon: const Icon(
                           Icons.edit,
                         ),
-
-                        label:
-                        const Text(
+                        label: const Text(
                           'Edit Menu',
                         ),
                       ),
