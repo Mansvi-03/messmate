@@ -293,100 +293,166 @@ class _StudentProfileState extends State<StudentProfile> {
     await showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Change Password'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: currentPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Current Password',
-                      prefixIcon: Icon(Icons.lock),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Enter current password';
-                      }
+        bool isSubmitting = false;
 
-                      return null;
-                    },
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Change Password'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: currentPasswordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Current Password',
+                          prefixIcon: Icon(Icons.lock),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Enter current password';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      TextFormField(
+                        controller: newPasswordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'New Password',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Enter new password';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm New Password',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Confirm your new password';
+                          }
+                          if (value != newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: 15),
-
-                  TextFormField(
-                    controller: newPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'New Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Enter new password';
-                      }
-
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  TextFormField(
-                    controller: confirmPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm New Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Confirm your new password';
-                      }
-
-                      if (value != newPasswordController.text) {
-                        return 'Passwords do not match';
-                      }
-
-                      return null;
-                    },
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) {
-                  return;
-                }
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                        },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) {
+                            return;
+                          }
 
-                Navigator.pop(dialogContext);
+                          setDialogState(() {
+                            isSubmitting = true;
+                          });
 
-                await _updatePassword(
-                  currentPasswordController.text,
-                  newPasswordController.text,
-                );
-              },
-              child: const Text('Change Password'),
-            ),
-          ],
+                          try {
+                            final credential = EmailAuthProvider.credential(
+                              email: user.email!,
+                              password: currentPasswordController.text,
+                            );
+
+                            await user.reauthenticateWithCredential(credential);
+                            await user.updatePassword(newPasswordController.text);
+
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password changed successfully.'),
+                              ),
+                            );
+                          } on FirebaseAuthException catch (e) {
+                            setDialogState(() {
+                              isSubmitting = false;
+                            });
+
+                            String message = 'Failed to change password.';
+
+                            if (e.code == 'wrong-password' ||
+                                e.code == 'invalid-credential') {
+                              message = 'Current password is incorrect.';
+                            } else if (e.code == 'weak-password') {
+                              message = 'New password is too weak.';
+                            } else if (e.code == 'requires-recent-login') {
+                              message =
+                                  'Please log in again and try changing the password.';
+                            }
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(message),
+                              ),
+                            );
+                          } catch (e) {
+                            setDialogState(() {
+                              isSubmitting = false;
+                            });
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Something went wrong.'),
+                              ),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Change Password'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -394,63 +460,6 @@ class _StudentProfileState extends State<StudentProfile> {
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
-  }
-
-  Future<void> _updatePassword(
-      String currentPassword,
-      String newPassword,
-      ) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null || user.email == null) {
-      return;
-    }
-
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: currentPassword,
-      );
-
-      await user.reauthenticateWithCredential(credential);
-
-      await user.updatePassword(newPassword);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password changed successfully.'),
-        ),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-
-      String message = 'Failed to change password.';
-
-      if (e.code == 'wrong-password' ||
-          e.code == 'invalid-credential') {
-        message = 'Current password is incorrect.';
-      } else if (e.code == 'weak-password') {
-        message = 'New password is too weak.';
-      } else if (e.code == 'requires-recent-login') {
-        message = 'Please log in again and try changing the password.';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Something went wrong.'),
-        ),
-      );
-    }
   }
 
   // ------------------------------------------------------------

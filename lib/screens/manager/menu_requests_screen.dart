@@ -155,25 +155,30 @@ class _MenuRequestsScreenState
   // ----------------------------------------------------------
 
   String _getMealMenu(
-      String day,
-      String meal,
-      ) {
-    final dayMenu =
-    _menu[day];
+    String day,
+    String meal,
+  ) {
+    final dayMenu = _menu[day];
 
     if (dayMenu == null) {
       return 'No menu added';
     }
 
-    final value =
-    dayMenu[
-    meal.toLowerCase()
-    ]
-        ?.toString()
-        .trim();
+    final raw = dayMenu[meal.toLowerCase()];
 
-    if (value == null ||
-        value.isEmpty) {
+    if (raw is Map) {
+      final menu = raw['menu']?.toString().trim() ?? '';
+      final price = raw['price'];
+      if (menu.isEmpty) return 'No menu added';
+      if (price != null && price != 0) {
+        return '$menu (Price: ₹$price)';
+      }
+      return menu;
+    }
+
+    final value = raw?.toString().trim();
+
+    if (value == null || value.isEmpty) {
       return 'No menu added';
     }
 

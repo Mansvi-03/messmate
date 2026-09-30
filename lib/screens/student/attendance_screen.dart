@@ -226,20 +226,47 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
           ..._attendance.map((item) {
             final date = item['date']?.toString() ?? '';
+            final mealRaw = item['meal']?.toString() ?? '';
             final isPresent = item['present'] == true;
 
+            final mealName = _formatMeal(mealRaw);
+            final timing = _getMealTiming(mealRaw);
+
             return Card(
+              margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                title: Text(
-                  _formatDate(date),
+                leading: Icon(
+                  _getMealIcon(mealRaw),
+                  size: 28,
+                  color: isPresent ? Colors.green : Colors.grey,
                 ),
-                trailing: Text(
-                  isPresent ? 'Present' : 'Absent',
-                  style: TextStyle(
+                title: Text(
+                  '$mealName • ${_formatDate(date)}',
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isPresent
-                        ? Colors.green
-                        : Colors.red,
+                  ),
+                ),
+                subtitle: Text(
+                  'Mess Timing: $timing',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isPresent ? Colors.green.shade50 : Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isPresent ? Colors.green : Colors.red,
+                    ),
+                  ),
+                  child: Text(
+                    isPresent ? 'Present' : 'Absent',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isPresent ? Colors.green.shade800 : Colors.red.shade800,
+                    ),
                   ),
                 ),
               ),
@@ -248,6 +275,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ],
       ),
     );
+  }
+
+  String _formatMeal(String meal) {
+    final m = meal.trim().toLowerCase();
+    if (m == 'breakfast') return 'Breakfast';
+    if (m == 'lunch') return 'Lunch';
+    if (m == 'dinner') return 'Dinner';
+    if (m.isEmpty) return 'Meal';
+    return m[0].toUpperCase() + m.substring(1);
+  }
+
+  String _getMealTiming(String meal) {
+    final m = meal.trim().toLowerCase();
+    if (m == 'breakfast') return '8:00 AM - 10:00 AM';
+    if (m == 'lunch') return '12:30 PM - 2:30 PM';
+    if (m == 'dinner') return '7:30 PM - 9:30 PM';
+    return 'Mess Hours';
+  }
+
+  IconData _getMealIcon(String meal) {
+    final m = meal.trim().toLowerCase();
+    if (m == 'breakfast') return Icons.free_breakfast;
+    if (m == 'lunch') return Icons.lunch_dining;
+    if (m == 'dinner') return Icons.dinner_dining;
+    return Icons.restaurant;
   }
 
   Widget _summaryItem(String title, String value) {

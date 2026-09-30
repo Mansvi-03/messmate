@@ -358,6 +358,8 @@
                     'day': _today,
                     'meal': mealKey,
                     'present': isPresent,
+                    'price': mealPrice,
+                    'menu': _getMealMenu(_todayMenuData, _selectedMeal),
                   },
                 );
 
@@ -366,6 +368,9 @@
                 // ==========================================
 
                 if (isPresent) {
+                  final existingBill = await _firestoreService.get('bills', recordId);
+                  final existingStatus = existingBill?['status']?.toString();
+
                   await _firestoreService.add(
                     'bills',
                     recordId,
@@ -381,11 +386,12 @@
                       // Store price as well for clarity.
                       'price': mealPrice,
 
-                      'status': 'unpaid',
+                      'status': (existingStatus != null && existingStatus.isNotEmpty)
+                          ? existingStatus
+                          : 'unpaid',
 
-                      'createdAt':
-                      DateTime.now()
-                          .toIso8601String(),
+                      'createdAt': existingBill?['createdAt'] ??
+                          DateTime.now().toIso8601String(),
                     },
                   );
                 }

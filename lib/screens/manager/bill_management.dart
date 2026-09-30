@@ -6,14 +6,11 @@ class BillManagement extends StatefulWidget {
   const BillManagement({super.key});
 
   @override
-  State<BillManagement> createState() =>
-      _BillManagementState();
+  State<BillManagement> createState() => _BillManagementState();
 }
 
-class _BillManagementState
-    extends State<BillManagement> {
-  final FirestoreService _firestoreService =
-  FirestoreService();
+class _BillManagementState extends State<BillManagement> {
+  final FirestoreService _firestoreService = FirestoreService();
 
   bool _loading = true;
 
@@ -28,17 +25,87 @@ class _BillManagementState
 
   Future<void> _loadData() async {
     try {
-      final students =
-      await _firestoreService.getAll('students');
+      final students = await _firestoreService.getAll('students');
+      final bills = await _firestoreService.getAll('bills');
+      final attendanceList = await _firestoreService.getAll('attendance');
+      final menus = await _firestoreService.getAll('menus');
 
-      final bills =
-      await _firestoreService.getAll('bills');
+      final Map<String, Map<String, dynamic>> menuByDay = {};
+      for (final menu in menus) {
+        final day = menu['day']?.toString();
+        if (day != null && day.isNotEmpty) {
+          menuByDay[day] = menu;
+        }
+      }
+
+      // Automatically create unpaid bills for present attendance records if missing
+      final Map<String, Map<String, dynamic>> existingBillsMap = {};
+      for (final bill in bills) {
+        final id = bill['id']?.toString() ?? '';
+        if (id.isNotEmpty) {
+          existingBillsMap[id] = bill;
+        }
+      }
+
+      final List<Map<String, dynamic>> updatedBillsList = List.from(bills);
+
+      for (final att in attendanceList) {
+        if (att['present'] == true) {
+          final studentId = att['studentId']?.toString() ?? '';
+          final recordId = att['id']?.toString() ?? '';
+
+          if (studentId.isNotEmpty && recordId.isNotEmpty) {
+            if (!existingBillsMap.containsKey(recordId)) {
+              double price = _extractNum(att['price']);
+              if (price <= 0) {
+                price = _extractNum(att['amount']);
+              }
+              if (price <= 0) {
+                final mealKey = (att['meal']?.toString() ?? 'lunch').toLowerCase();
+                String dayName = att['day']?.toString() ?? '';
+                if (dayName.isEmpty && att['date'] != null) {
+                  try {
+                    final dt = DateTime.parse(att['date'].toString());
+                    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                    dayName = days[dt.weekday - 1];
+                  } catch (_) {}
+                }
+                if (menuByDay.containsKey(dayName)) {
+                  final dayMenu = menuByDay[dayName]!;
+                  final mealData = dayMenu[mealKey];
+                  if (mealData is Map) {
+                    price = _extractNum(mealData['price']);
+                  }
+                }
+              }
+              if (price <= 0) {
+                price = 60.0;
+              }
+
+              final newBillData = {
+                'id': recordId,
+                'studentId': studentId,
+                'date': att['date'] ?? '',
+                'meal': att['meal'] ?? '',
+                'amount': price,
+                'price': price,
+                'status': 'unpaid',
+                'createdAt': DateTime.now().toIso8601String(),
+              };
+
+              await _firestoreService.add('bills', recordId, newBillData);
+              updatedBillsList.add(newBillData);
+              existingBillsMap[recordId] = newBillData;
+            }
+          }
+        }
+      }
 
       if (!mounted) return;
 
       setState(() {
         _students = students;
-        _bills = bills;
+        _bills = updatedBillsList;
         _loading = false;
       });
     } catch (e) {
@@ -56,174 +123,56 @@ class _BillManagementState
     }
   }
 
+  static double _extractNum(dynamic val) {
+    if (val is num) return val.toDouble();
+    if (val != null) {
+      return double.tryParse(val.toString().trim()) ?? 0;
+    }
+    return 0;
+  }
+
   String _studentName(String studentId) {
     for (final student in _students) {
       if (student['id'] == studentId) {
         return student['name'] ?? 'Unknown Student';
       }
     }
-
     return 'Unknown Student';
   }
 
-  Future<void> _addBill() async {
-    String? selectedStudentId;
-    final amountController = TextEditingController();
+  Future<void> _updateStatus(String billId, String newStatus) async {
+    try {
+      final String normalizedStatus = newStatus.toLowerCase();
 
-    String status = 'Unpaid';
+      await _firestoreService.update('bills', billId, {
+        'status': normalizedStatus,
+      });
 
-    await showDialog(
-      context: context,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Add Bill'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedStudentId,
-                    decoration: const InputDecoration(
-                      labelText: 'Student',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _students.map((student) {
-                      final id =
-                      student['id'].toString();
+      if (!mounted) return;
 
-                      return DropdownMenuItem(
-                        value: id,
-                        child: Text(
-                          student['name'] ??
-                              'Unknown Student',
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectedStudentId = value;
-                      });
-                    },
-                  ),
+      setState(() {
+        for (final bill in _bills) {
+          if (bill['id'] == billId) {
+            bill['status'] = normalizedStatus;
+          }
+        }
+      });
 
-                  const SizedBox(height: 15),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Status updated to ${normalizedStatus.toUpperCase()}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
 
-                  TextField(
-                    controller: amountController,
-                    keyboardType:
-                    const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Amount',
-                      prefixText: '₹ ',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  DropdownButtonFormField<String>(
-                    value: status,
-                    decoration: const InputDecoration(
-                      labelText: 'Status',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Paid',
-                        child: Text('Paid'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Unpaid',
-                        child: Text('Unpaid'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() {
-                          status = value;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (selectedStudentId == null ||
-                        amountController.text
-                            .trim()
-                            .isEmpty) {
-                      return;
-                    }
-
-                    try {
-                      final id = DateTime.now()
-                          .millisecondsSinceEpoch
-                          .toString();
-
-                      await _firestoreService.add(
-                        'bills',
-                        id,
-                        {
-                          'studentId':
-                          selectedStudentId,
-                          'amount': double.parse(
-                            amountController.text.trim(),
-                          ),
-                          'status': status,
-                          'createdAt':
-                          DateTime.now()
-                              .toIso8601String(),
-                        },
-                      );
-
-                      if (!mounted) return;
-
-                      Navigator.pop(context);
-
-                      await _loadData();
-
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Bill added successfully',
-                          ),
-                        ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Failed to add bill: $e',
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    amountController.dispose();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+        ),
+      );
+    }
   }
 
   @override
@@ -231,55 +180,90 @@ class _BillManagementState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bill Management'),
-        actions: [
-          IconButton(
-            onPressed: _addBill,
-            icon: const Icon(Icons.add),
-          ),
-        ],
       ),
       body: _loading
           ? const Center(
-        child: CircularProgressIndicator(),
-      )
+              child: CircularProgressIndicator(),
+            )
           : _bills.isEmpty
-          ? const Center(
-        child: Text('No bills created'),
-      )
-          : ListView.builder(
-        itemCount: _bills.length,
-        itemBuilder: (context, index) {
-          final bill = _bills[index];
+              ? const Center(
+                  child: Text('No bills created'),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: ListView.builder(
+                    itemCount: _bills.length,
+                    itemBuilder: (context, index) {
+                      final bill = _bills[index];
+                      final billId = bill['id']?.toString() ?? '';
+                      final studentId = bill['studentId']?.toString() ?? '';
+                      final amountVal = _extractNum(bill['amount']);
+                      final displayAmount = amountVal > 0
+                          ? amountVal.toStringAsFixed(0)
+                          : _extractNum(bill['price']).toStringAsFixed(0);
 
-          final studentId =
-              bill['studentId']?.toString() ?? '';
+                      final rawStatus = (bill['status']?.toString() ?? 'unpaid').toLowerCase();
+                      final currentStatus = (rawStatus == 'paid') ? 'paid' : 'unpaid';
 
-          final amount =
-              bill['amount']?.toString() ?? '0';
-
-          final status =
-              bill['status']?.toString() ??
-                  'Unpaid';
-
-          return ListTile(
-            title: Text(
-              _studentName(studentId),
-            ),
-            subtitle: Text(
-              'Bill: ₹$amount',
-            ),
-            trailing: Text(
-              status,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: status == 'Paid'
-                    ? Colors.green
-                    : Colors.red,
-              ),
-            ),
-          );
-        },
-      ),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: ListTile(
+                          title: Text(
+                            _studentName(studentId),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Bill: ₹$displayAmount',
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: currentStatus == 'paid' ? Colors.green : Colors.red,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: currentStatus,
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: currentStatus == 'paid' ? Colors.green : Colors.red,
+                                ),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: currentStatus == 'paid' ? Colors.green : Colors.red,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'unpaid',
+                                    child: Text(
+                                      'unpaid',
+                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'paid',
+                                    child: Text(
+                                      'paid',
+                                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null && val != currentStatus && billId.isNotEmpty) {
+                                    _updateStatus(billId, val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }

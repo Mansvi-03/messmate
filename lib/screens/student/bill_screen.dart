@@ -48,11 +48,72 @@ class _BillScreenState extends State<BillScreen> {
         'attendance',
       );
 
-      final studentAttendance =
-      data.where((item) {
-        return item['studentId'] ==
-            user.uid &&
-            item['present'] == true;
+      final allBills = await _firestoreService.getAll('bills');
+      final allMenus = await _firestoreService.getAll('menus');
+
+      final Map<String, Map<String, dynamic>> menuByDay = {};
+      for (final menu in allMenus) {
+        final day = menu['day']?.toString();
+        if (day != null && day.isNotEmpty) {
+          menuByDay[day] = menu;
+        }
+      }
+
+      final studentAttendance = data.where((item) {
+        return item['studentId'] == user.uid && item['present'] == true;
+      }).map((item) {
+        final Map<String, dynamic> enrichedItem = Map.from(item);
+
+        double price = _extractNum(enrichedItem['price']);
+        if (price <= 0) {
+          price = _extractNum(enrichedItem['amount']);
+        }
+
+        // Try matching in bills collection
+        if (price <= 0) {
+          for (final bill in allBills) {
+            if (bill['studentId'] == user.uid &&
+                (bill['id'] == enrichedItem['id'] ||
+                    (bill['date'] == enrichedItem['date'] &&
+                        bill['meal'] == enrichedItem['meal']))) {
+              price = _extractNum(bill['amount']);
+              if (price <= 0) price = _extractNum(bill['price']);
+              if (price > 0) break;
+            }
+          }
+        }
+
+        // Try matching in menus collection
+        final mealKey = (enrichedItem['meal']?.toString() ?? 'lunch').toLowerCase();
+        String dayName = enrichedItem['day']?.toString() ?? '';
+        if (dayName.isEmpty && enrichedItem['date'] != null) {
+          try {
+            final dt = DateTime.parse(enrichedItem['date'].toString());
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            dayName = days[dt.weekday - 1];
+          } catch (_) {}
+        }
+
+        if (menuByDay.containsKey(dayName)) {
+          final dayMenu = menuByDay[dayName]!;
+          final mealData = dayMenu[mealKey];
+          if (mealData is Map) {
+            if (price <= 0) {
+              price = _extractNum(mealData['price']);
+            }
+            if (enrichedItem['menu'] == null || enrichedItem['menu'].toString().isEmpty) {
+              enrichedItem['menu'] = mealData['menu']?.toString();
+            }
+          }
+        }
+
+        // Default fallback price if menu price was not set
+        if (price <= 0) {
+          price = 60.0;
+        }
+
+        enrichedItem['price'] = price;
+        return enrichedItem;
       }).toList();
 
       studentAttendance.sort((a, b) {
@@ -84,19 +145,18 @@ class _BillScreenState extends State<BillScreen> {
     }
   }
 
+  static double _extractNum(dynamic val) {
+    if (val is num) return val.toDouble();
+    if (val != null) {
+      return double.tryParse(val.toString().trim()) ?? 0;
+    }
+    return 0;
+  }
+
   double _getPrice(
       Map<String, dynamic> item,
       ) {
-    final price = item['price'];
-
-    if (price is num) {
-      return price.toDouble();
-    }
-
-    return double.tryParse(
-      price?.toString() ?? '',
-    ) ??
-        0;
+    return _extractNum(item['price']);
   }
 
   double get _totalAmount {
