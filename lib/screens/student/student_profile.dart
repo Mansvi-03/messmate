@@ -101,7 +101,19 @@ class _StudentProfileState extends State<StudentProfile> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Edit Profile'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_rounded, color: Color(0xFF059669)),
+              SizedBox(width: 10),
+              Text(
+                'Edit Profile',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -111,72 +123,59 @@ class _StudentProfileState extends State<StudentProfile> {
                   TextFormField(
                     controller: nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Name',
-                      prefixIcon: Icon(Icons.person),
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your name';
                       }
-
                       return null;
                     },
                   ),
-
-                  const SizedBox(height: 15),
-
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: contactController,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       labelText: 'Contact Number',
-                      prefixIcon: Icon(Icons.phone),
+                      prefixIcon: Icon(Icons.phone_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter contact number';
                       }
-
-                      if (!RegExp(
-                        r'^[0-9]{10}$',
-                      ).hasMatch(value.trim())) {
+                      if (!RegExp(r'^[0-9]{10}$').hasMatch(value.trim())) {
                         return 'Enter a valid 10-digit number';
                       }
-
                       return null;
                     },
                   ),
-
-                  const SizedBox(height: 15),
-
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: collegeController,
                     decoration: const InputDecoration(
-                      labelText: 'College',
-                      prefixIcon: Icon(Icons.school),
+                      labelText: 'College / Institute',
+                      prefixIcon: Icon(Icons.school_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter college name';
                       }
-
                       return null;
                     },
                   ),
-
-                  const SizedBox(height: 15),
-
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: hostelController,
                     decoration: const InputDecoration(
-                      labelText: 'Hostel',
-                      prefixIcon: Icon(Icons.home),
+                      labelText: 'Hostel / Room',
+                      prefixIcon: Icon(Icons.apartment_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter hostel name';
                       }
-
                       return null;
                     },
                   ),
@@ -206,7 +205,7 @@ class _StudentProfileState extends State<StudentProfile> {
                   hostelController.text.trim(),
                 );
               },
-              child: const Text('Save'),
+              child: const Text('Save Changes'),
             ),
           ],
         );
@@ -220,11 +219,11 @@ class _StudentProfileState extends State<StudentProfile> {
   }
 
   Future<void> _updateStudentProfile(
-      String name,
-      String contactNumber,
-      String college,
-      String hostel,
-      ) async {
+    String name,
+    String contactNumber,
+    String college,
+    String hostel,
+  ) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -298,7 +297,19 @@ class _StudentProfileState extends State<StudentProfile> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Change Password'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_outline_rounded, color: Color(0xFF0284C7)),
+                  SizedBox(width: 10),
+                  Text(
+                    'Change Password',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -310,7 +321,7 @@ class _StudentProfileState extends State<StudentProfile> {
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Current Password',
-                          prefixIcon: Icon(Icons.lock),
+                          prefixIcon: Icon(Icons.lock_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -319,15 +330,13 @@ class _StudentProfileState extends State<StudentProfile> {
                           return null;
                         },
                       ),
-
-                      const SizedBox(height: 15),
-
+                      const SizedBox(height: 14),
                       TextFormField(
                         controller: newPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'New Password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                          prefixIcon: Icon(Icons.lock_reset_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -339,15 +348,13 @@ class _StudentProfileState extends State<StudentProfile> {
                           return null;
                         },
                       ),
-
-                      const SizedBox(height: 15),
-
+                      const SizedBox(height: 14),
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Confirm New Password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                          prefixIcon: Icon(Icons.lock_clock_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -399,7 +406,7 @@ class _StudentProfileState extends State<StudentProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               const SnackBar(
                                 content: Text('Password changed successfully.'),
                               ),
@@ -423,7 +430,7 @@ class _StudentProfileState extends State<StudentProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               SnackBar(
                                 content: Text(message),
                               ),
@@ -435,7 +442,7 @@ class _StudentProfileState extends State<StudentProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               const SnackBar(
                                 content: Text('Something went wrong.'),
                               ),
@@ -448,7 +455,7 @@ class _StudentProfileState extends State<StudentProfile> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Change Password'),
+                      : const Text('Update Password'),
                 ),
               ],
             );
@@ -467,18 +474,29 @@ class _StudentProfileState extends State<StudentProfile> {
   // ------------------------------------------------------------
 
   Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Sign Out'),
+        content: const Text('Are you sure you want to sign out of your account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     try {
-      debugPrint('LOGOUT: Starting logout...');
-
-      final user = FirebaseAuth.instance.currentUser;
-
-      debugPrint(
-        'LOGOUT: Current user = ${user?.email}',
-      );
-
       await FirebaseAuth.instance.signOut();
-
-      debugPrint('LOGOUT: Firebase signOut successful');
 
       if (!mounted) return;
 
@@ -486,44 +504,14 @@ class _StudentProfileState extends State<StudentProfile> {
         MaterialPageRoute(
           builder: (context) => const LoginScreen(),
         ),
-            (route) => false,
+        (route) => false,
       );
-
-      debugPrint('LOGOUT: Navigation successful');
-    } on FirebaseAuthException catch (e) {
-      debugPrint(
-        'LOGOUT FIREBASE ERROR: ${e.code}',
-      );
-
-      debugPrint(
-        'LOGOUT FIREBASE MESSAGE: ${e.message}',
-      );
-
+    } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Logout error: ${e.code}',
-          ),
-        ),
-      );
-    } catch (e, stackTrace) {
-      debugPrint(
-        'LOGOUT ERROR: $e',
-      );
-
-      debugPrint(
-        'LOGOUT STACKTRACE: $stackTrace',
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Logout error: $e',
-          ),
+          content: Text('Logout error: $e'),
         ),
       );
     }
@@ -537,7 +525,7 @@ class _StudentProfileState extends State<StudentProfile> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text('Student Profile'),
       ),
       body: _buildBody(),
     );
@@ -555,111 +543,263 @@ class _StudentProfileState extends State<StudentProfile> {
         child: Text(
           _errorMessage!,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 15,
+            color: Color(0xFF64748B),
           ),
         ),
       );
     }
 
+    final name = _studentData?['name']?.toString() ?? 'Student';
+    final email = _studentData?['email']?.toString() ?? '';
+    final contact = _studentData?['contactNumber']?.toString() ?? 'Not provided';
+    final college = _studentData?['college']?.toString() ?? 'Not provided';
+    final hostel = _studentData?['hostel']?.toString() ?? 'Not provided';
+
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S';
+
     return RefreshIndicator(
       onRefresh: _loadStudentProfile,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
+          // Profile Header Avatar Card
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF065F46),
+                  Color(0xFF047857),
+                  Color(0xFF059669),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF059669).withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        email,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFFD1FAE5),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'STUDENT MEMBER',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
           const Text(
-            'Student Profile',
+            'Information & Residence',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
             ),
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(height: 12),
 
-          _profileItem(
-            Icons.person,
-            'Name',
-            _studentData?['name'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.email,
-            'Email',
-            _studentData?['email'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.phone,
-            'Contact',
-            _studentData?['contactNumber'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.school,
-            'College',
-            _studentData?['college'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.home,
-            'Hostel',
-            _studentData?['hostel'] ?? 'Not available',
-          ),
-
-          const SizedBox(height: 25),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isSaving ? null : _editProfile,
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit Profile'),
+          // Information Group Container
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                _profileRow(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: const Color(0xFF059669),
+                  title: 'Full Name',
+                  value: name,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.email_outlined,
+                  iconColor: const Color(0xFF0284C7),
+                  title: 'Email Address',
+                  value: email,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.phone_outlined,
+                  iconColor: const Color(0xFFD97706),
+                  title: 'Contact Phone',
+                  value: contact,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.school_outlined,
+                  iconColor: const Color(0xFF7C3AED),
+                  title: 'College / Institute',
+                  value: college,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.apartment_rounded,
+                  iconColor: const Color(0xFF0D9488),
+                  title: 'Hostel / Room Details',
+                  value: hostel,
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 26),
 
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _changePassword,
-              icon: const Icon(Icons.lock),
-              label: const Text('Change Password'),
+          // Actions
+          ElevatedButton.icon(
+            onPressed: _isSaving ? null : _editProfile,
+            icon: const Icon(Icons.edit_rounded, size: 18),
+            label: const Text('Edit Profile Details'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
+          OutlinedButton.icon(
+            onPressed: _changePassword,
+            icon: const Icon(Icons.lock_outline_rounded, size: 18),
+            label: const Text('Change Password'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          TextButton.icon(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout_rounded, size: 18, color: Color(0xFFEF4444)),
+            label: const Text(
+              'Sign Out from Account',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _profileItem(
-      IconData icon,
-      String title,
-      String value,
-      ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(
-          value.toString(),
-          style: const TextStyle(
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
-  }
-}
+}

@@ -123,13 +123,26 @@ class _BillScreenState extends State<BillScreen> {
   IconData _getMealIcon(String meal) {
     switch (meal.toLowerCase()) {
       case 'breakfast':
-        return Icons.free_breakfast;
+        return Icons.free_breakfast_rounded;
       case 'lunch':
-        return Icons.lunch_dining;
+        return Icons.lunch_dining_rounded;
       case 'dinner':
-        return Icons.dinner_dining;
+        return Icons.dinner_dining_rounded;
       default:
-        return Icons.restaurant;
+        return Icons.restaurant_rounded;
+    }
+  }
+
+  Color _getMealColor(String meal) {
+    switch (meal.toLowerCase()) {
+      case 'breakfast':
+        return const Color(0xFFD97706);
+      case 'lunch':
+        return const Color(0xFF0284C7);
+      case 'dinner':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF059669);
     }
   }
 
@@ -137,7 +150,7 @@ class _BillScreenState extends State<BillScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Bill'),
+        title: const Text('My Mess Bill'),
       ),
       body: _buildBody(),
     );
@@ -154,7 +167,7 @@ class _BillScreenState extends State<BillScreen> {
           padding: const EdgeInsets.all(20),
           child: Text(
             _errorMessage!,
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 15, color: Color(0xFF64748B)),
             textAlign: TextAlign.center,
           ),
         ),
@@ -163,7 +176,7 @@ class _BillScreenState extends State<BillScreen> {
 
     final summary = _currentBillSummary;
     if (summary == null) {
-      return const Center(child: Text('No bill data available.'));
+      return const Center(child: Text('No billing information available.'));
     }
 
     final isPaid = summary.status == 'paid';
@@ -171,92 +184,66 @@ class _BillScreenState extends State<BillScreen> {
     return RefreshIndicator(
       onRefresh: _loadBill,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         children: [
-          // Billing Period Selector
-          Card(
-            elevation: 1,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_month, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Billing Period:',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: _selectedPeriod,
-                        items: _availablePeriods.map((p) {
-                          return DropdownMenuItem<String>(
-                            value: p['key'],
-                            child: Text(
-                              p['label'] ?? '',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) _onPeriodChanged(val);
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Status Banner
+          // Period Selector Bar
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isPaid ? Colors.green.shade50 : Colors.red.shade50,
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isPaid ? Colors.green : Colors.red,
+                color: const Color(0xFFE2E8F0),
+                width: 1,
               ),
             ),
             child: Row(
               children: [
-                Icon(
-                  isPaid ? Icons.check_circle : Icons.warning_amber_rounded,
-                  color: isPaid ? Colors.green : Colors.red,
-                  size: 28,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Color(0xFF2563EB),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Period:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isPaid ? 'PAID' : 'UNPAID',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isPaid ? Colors.green.shade900 : Colors.red.shade900,
-                        ),
-                      ),
-                      Text(
-                        isPaid
-                            ? 'All dues for ${summary.billingPeriodLabel} are settled.'
-                            : 'Pending bill of ₹${summary.totalBill.toStringAsFixed(0)} for ${summary.billingPeriodLabel}.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isPaid ? Colors.green.shade800 : Colors.red.shade800,
-                        ),
-                      ),
-                    ],
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedPeriod,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      items: _availablePeriods.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p['key'],
+                          child: Text(
+                            p['label'] ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) _onPeriodChanged(val);
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -265,145 +252,316 @@ class _BillScreenState extends State<BillScreen> {
 
           const SizedBox(height: 16),
 
-          // R.5.3 Bill Calculation Card
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Bill Calculation (R.5.3)',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  _calcRow(
-                    'Breakfast',
-                    summary.breakfastUnitPrice,
-                    summary.breakfastCount,
-                    summary.breakfastTotal,
-                  ),
-                  const SizedBox(height: 8),
-
-                  _calcRow(
-                    'Lunch',
-                    summary.lunchUnitPrice,
-                    summary.lunchCount,
-                    summary.lunchTotal,
-                  ),
-                  const SizedBox(height: 8),
-
-                  _calcRow(
-                    'Dinner',
-                    summary.dinnerUnitPrice,
-                    summary.dinnerCount,
-                    summary.dinnerTotal,
-                  ),
-
-                  const Divider(height: 24, thickness: 1),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total Bill',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '₹${summary.totalBill.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: isPaid ? Colors.green.shade800 : Colors.red.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'Total Meals Consumed: ${summary.totalMeals} meals',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ],
+          // Total Invoice Hero Card
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isPaid
+                    ? [const Color(0xFF065F46), const Color(0xFF059669)]
+                    : [const Color(0xFF991B1B), const Color(0xFFDC2626)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: (isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626))
+                      .withValues(alpha: 0.28),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      summary.billingPeriodLabel.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white70,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isPaid ? 'PAID' : 'PAYMENT DUE',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '₹${summary.totalBill.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isPaid
+                      ? 'All dues for ${summary.billingPeriodLabel} are fully settled.'
+                      : 'Pending amount payable for ${summary.totalMeals} meals consumed.',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // R.5.1 Meal Consumption History
+          // Bill Calculation Breakdown Card (R.5.3)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Bill Breakdown',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${summary.totalMeals} Meals Total',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                _calcRow(
+                  meal: 'Breakfast',
+                  icon: Icons.free_breakfast_rounded,
+                  color: const Color(0xFFD97706),
+                  unitPrice: summary.breakfastUnitPrice,
+                  count: summary.breakfastCount,
+                  total: summary.breakfastTotal,
+                ),
+                const SizedBox(height: 12),
+
+                _calcRow(
+                  meal: 'Lunch',
+                  icon: Icons.lunch_dining_rounded,
+                  color: const Color(0xFF0284C7),
+                  unitPrice: summary.lunchUnitPrice,
+                  count: summary.lunchCount,
+                  total: summary.lunchTotal,
+                ),
+                const SizedBox(height: 12),
+
+                _calcRow(
+                  meal: 'Dinner',
+                  icon: Icons.dinner_dining_rounded,
+                  color: const Color(0xFF7C3AED),
+                  unitPrice: summary.dinnerUnitPrice,
+                  count: summary.dinnerCount,
+                  total: summary.dinnerTotal,
+                ),
+
+                const Divider(height: 28, color: Color(0xFFE2E8F0)),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Calculated',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      '₹${summary.totalBill.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Meal Consumption History (R.5.1)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Meal History (R.5.1)',
+                'Meal Consumption History',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.2,
                 ),
               ),
               Text(
-                '${summary.consumptions.length} meals',
-                style: TextStyle(color: Colors.grey.shade600),
+                '${summary.consumptions.length} Logs',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           if (summary.consumptions.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Center(
-                  child: Text(
-                    'No meals taken in ${summary.billingPeriodLabel}.',
-                    style: const TextStyle(fontSize: 15),
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Center(
+                child: Text(
+                  'No meals recorded for ${summary.billingPeriodLabel}.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
                   ),
                 ),
               ),
             )
           else
             ...summary.consumptions.reversed.map((item) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade50,
-                    child: Icon(
-                      _getMealIcon(item.meal),
-                      color: Colors.blue.shade800,
-                      size: 22,
+              final mealColor = _getMealColor(item.meal);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: mealColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getMealIcon(item.meal),
+                        color: mealColor,
+                        size: 22,
+                      ),
                     ),
-                  ),
-                  title: Text(
-                    '${item.meal[0].toUpperCase()}${item.meal.substring(1)}  •  ${item.date}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    item.menu,
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                  trailing: Text(
-                    '₹${item.price.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${item.meal[0].toUpperCase()}${item.meal.substring(1)} • ${item.date}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.menu,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '₹${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }),
@@ -412,22 +570,37 @@ class _BillScreenState extends State<BillScreen> {
     );
   }
 
-  Widget _calcRow(String meal, double unitPrice, int count, double total) {
+  Widget _calcRow({
+    required String meal,
+    required IconData icon,
+    required Color color,
+    required double unitPrice,
+    required int count,
+    required double total,
+  }) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          '$meal = ₹${unitPrice.toStringAsFixed(0)} × $count days',
-          style: const TextStyle(fontSize: 14),
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '$meal (₹${unitPrice.toStringAsFixed(0)} × $count days)',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF334155),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
         Text(
           '₹${total.toStringAsFixed(0)}',
           style: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
           ),
         ),
       ],
     );
   }
-}
+}

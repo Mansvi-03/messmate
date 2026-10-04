@@ -12,8 +12,7 @@ class MenuRequestsScreen extends StatefulWidget {
 
 class _MenuRequestsScreenState
     extends State<MenuRequestsScreen> {
-  final FirestoreService _firestoreService =
-  FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   final List<String> _days = [
     'Monday',
@@ -26,82 +25,42 @@ class _MenuRequestsScreenState
   ];
 
   Map<String, int> _requestCounts = {};
-
   Map<String, Map<String, dynamic>> _menu = {};
-
   DateTime _currentDate = DateTime.now();
 
   bool _isLoading = true;
-
   String? _errorMessage;
-
-  // ----------------------------------------------------------
-  // INIT
-  // ----------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
-
     _loadData();
   }
-
-  // ----------------------------------------------------------
-  // TODAY
-  // ----------------------------------------------------------
 
   String _getToday() {
     return _days[_currentDate.weekday - 1];
   }
 
-  // ----------------------------------------------------------
-  // TOMORROW
-  // ----------------------------------------------------------
-
   String _getTomorrow() {
-    final tomorrow =
-    _currentDate.add(
+    final tomorrow = _currentDate.add(
       const Duration(days: 1),
     );
-
     return _days[tomorrow.weekday - 1];
   }
 
-  // ----------------------------------------------------------
-  // LOAD DATA
-  // ----------------------------------------------------------
-
   Future<void> _loadData() async {
     try {
-      // ------------------------------------------------------
-      // LOAD MENUS
-      // ------------------------------------------------------
-
-      final menuData =
-      await _firestoreService.getAll(
-        'menus',
-      );
-
-      final Map<String,
-          Map<String, dynamic>>
-      loadedMenu = {};
+      final menuData = await _firestoreService.getAll('menus');
+      final Map<String, Map<String, dynamic>> loadedMenu = {};
 
       for (final item in menuData) {
-        final day =
-        item['day']?.toString();
-
-        if (day != null &&
-            day.isNotEmpty) {
+        final day = item['day']?.toString();
+        if (day != null && day.isNotEmpty) {
           loadedMenu[day] = item;
         }
       }
 
-      // ------------------------------------------------------
-      // LOAD REQUESTS
-      // ------------------------------------------------------
-
-      final requests =
-      await _firestoreService.getAll(
+      final requests = await _firestoreService.getAll(
         'menu_change_requests',
       );
 
@@ -112,22 +71,15 @@ class _MenuRequestsScreenState
           continue;
         }
 
-        final day =
-        request['day']?.toString();
+        final day = request['day']?.toString();
+        final meal = request['meal']?.toString();
 
-        final meal =
-        request['meal']?.toString();
-
-        if (day == null ||
-            meal == null) {
+        if (day == null || meal == null) {
           continue;
         }
 
-        final key =
-            '$day-$meal';
-
-        counts[key] =
-            (counts[key] ?? 0) + 1;
+        final key = '$day-$meal';
+        counts[key] = (counts[key] ?? 0) + 1;
       }
 
       if (!mounted) return;
@@ -144,15 +96,10 @@ class _MenuRequestsScreenState
 
       setState(() {
         _isLoading = false;
-        _errorMessage =
-        'Failed to load menu requests.';
+        _errorMessage = 'Failed to load menu requests.';
       });
     }
   }
-
-  // ----------------------------------------------------------
-  // GET CURRENT MENU
-  // ----------------------------------------------------------
 
   String _getMealMenu(
     String day,
@@ -161,7 +108,7 @@ class _MenuRequestsScreenState
     final dayMenu = _menu[day];
 
     if (dayMenu == null) {
-      return 'No menu added';
+      return 'No menu added yet';
     }
 
     final raw = dayMenu[meal.toLowerCase()];
@@ -169,130 +116,114 @@ class _MenuRequestsScreenState
     if (raw is Map) {
       final menu = raw['menu']?.toString().trim() ?? '';
       final price = raw['price'];
-      if (menu.isEmpty) return 'No menu added';
+      if (menu.isEmpty) return 'No menu added yet';
       if (price != null && price != 0) {
-        return '$menu (Price: ₹$price)';
+        return '$menu (₹$price)';
       }
       return menu;
     }
 
     final value = raw?.toString().trim();
-
     if (value == null || value.isEmpty) {
-      return 'No menu added';
+      return 'No menu added yet';
     }
 
     return value;
   }
 
-  // ----------------------------------------------------------
-  // GET REQUEST COUNT
-  // ----------------------------------------------------------
-
   int _getRequestCount(
-      String day,
-      String meal,
-      ) {
-    return _requestCounts[
-    '$day-$meal'] ??
-        0;
+    String day,
+    String meal,
+  ) {
+    return _requestCounts['$day-$meal'] ?? 0;
   }
 
-  // ----------------------------------------------------------
-  // CHANGE MENU
-  // ----------------------------------------------------------
-
   Future<void> _changeMenu(
-      String day,
-      String meal,
-      ) async {
-    final currentMenu =
-    _getMealMenu(
+    String day,
+    String meal,
+  ) async {
+    final currentMenu = _getMealMenu(
       day,
       meal,
     );
 
-    final controller =
-    TextEditingController(
-      text: currentMenu ==
-          'No menu added'
-          ? ''
-          : currentMenu,
+    final controller = TextEditingController(
+      text: currentMenu == 'No menu added yet' ? '' : currentMenu,
     );
 
-    final formKey =
-    GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
-    final newMenu =
-    await showDialog<String>(
+    final newMenu = await showDialog<String>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (
-              context,
-              setDialogState,
-              ) {
+          builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(
-                'Change $meal Menu',
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-
-              content:
-              Form(
-                key: formKey,
-
-                child:
-                TextFormField(
-                  controller:
-                  controller,
-
-                  maxLines: 4,
-
-                  decoration:
-                  const InputDecoration(
-                    labelText:
-                    'Menu',
-
-                    hintText:
-                    'Enter new menu',
-
-                    border:
-                    OutlineInputBorder(),
+              title: Row(
+                children: [
+                  const Icon(Icons.edit_note_rounded, color: Color(0xFF7C3AED)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Update $meal Menu',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-
-                  validator: (value) {
-                    if (value == null ||
-                        value.trim().isEmpty) {
-                      return 'Enter menu';
-                    }
-
-                    return null;
-                  },
+                ],
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Address student suggestions for $day $meal by updating the menu.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: controller,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'New Menu Items',
+                        hintText: 'Enter new dishes...',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter the menu';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
               ),
-
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(
-                      context,
-                    );
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
-
                 ElevatedButton(
                   onPressed: () {
                     if (!formKey.currentState!.validate()) {
                       return;
                     }
-
                     Navigator.pop(
                       context,
                       controller.text.trim(),
                     );
                   },
-                  child: const Text('Save'),
+                  child: const Text('Save & Resolve Requests'),
                 ),
               ],
             );
@@ -303,8 +234,7 @@ class _MenuRequestsScreenState
 
     controller.dispose();
 
-    if (newMenu == null ||
-        newMenu.trim().isEmpty) {
+    if (newMenu == null || newMenu.trim().isEmpty) {
       return;
     }
 
@@ -315,29 +245,21 @@ class _MenuRequestsScreenState
     );
   }
 
-  // ----------------------------------------------------------
-  // SAVE MENU
-  // ----------------------------------------------------------
-
   Future<void> _saveMenu(
-      String day,
-      String meal,
-      String newMenu,
-      ) async {
+    String day,
+    String meal,
+    String newMenu,
+  ) async {
     try {
-      final existingMenu =
-      await _firestoreService.get(
+      final existingMenu = await _firestoreService.get(
         'menus',
         day,
       );
 
-      final Map<String, dynamic>
-      updatedMenu = {};
+      final Map<String, dynamic> updatedMenu = {};
 
       if (existingMenu != null) {
-        updatedMenu.addAll(
-          existingMenu,
-        );
+        updatedMenu.addAll(existingMenu);
       }
 
       final canonicalDay = day.trim().isEmpty
@@ -363,10 +285,6 @@ class _MenuRequestsScreenState
         'price': existingPrice,
       };
 
-      // ------------------------------------------------------
-      // UPDATE ACTUAL MENU
-      // ------------------------------------------------------
-
       await _firestoreService.add(
         'menus',
         canonicalDay,
@@ -382,18 +300,13 @@ class _MenuRequestsScreenState
         } catch (_) {}
       }
 
-      // ------------------------------------------------------
-      // MARK RELATED REQUESTS AS HANDLED
-      // ------------------------------------------------------
-
-      final requests =
-      await _firestoreService.getAll(
+      // Mark related requests as handled
+      final requests = await _firestoreService.getAll(
         'menu_change_requests',
       );
 
       for (final request in requests) {
-        if (request['status'] ==
-            'pending' &&
+        if (request['status'] == 'pending' &&
             request['day'] == day &&
             request['meal'] == meal) {
           await _firestoreService.update(
@@ -406,124 +319,102 @@ class _MenuRequestsScreenState
         }
       }
 
-      // ------------------------------------------------------
-      // RELOAD
-      // ------------------------------------------------------
-
       await _loadData();
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '$meal menu updated successfully.',
+            '$meal menu updated and student requests marked as handled.',
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Failed to update menu.',
-          ),
+          content: Text('Failed to update menu.'),
         ),
       );
     }
   }
 
-  // ----------------------------------------------------------
-  // BUILD
-  // ----------------------------------------------------------
+  IconData _getMealIcon(String meal) {
+    switch (meal) {
+      case 'Breakfast':
+        return Icons.free_breakfast_rounded;
+      case 'Lunch':
+        return Icons.lunch_dining_rounded;
+      case 'Dinner':
+        return Icons.dinner_dining_rounded;
+      default:
+        return Icons.restaurant_rounded;
+    }
+  }
+
+  Color _getMealColor(String meal) {
+    switch (meal) {
+      case 'Breakfast':
+        return const Color(0xFFD97706);
+      case 'Lunch':
+        return const Color(0xFF0284C7);
+      case 'Dinner':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF059669);
+    }
+  }
 
   @override
-  Widget build(
-      BuildContext context,
-      ) {
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Menu Change Requests',
-        ),
+        title: const Text('Menu Change Requests'),
       ),
-
       body: _isLoading
-          ? const Center(
-        child:
-        CircularProgressIndicator(),
-      )
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(
-        child: Text(
-          _errorMessage!,
-        ),
-      )
-          : RefreshIndicator(
-        onRefresh: _loadData,
-        child: _buildBody(),
-      ),
+              ? Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: _buildBody(),
+                ),
     );
   }
 
-  // ----------------------------------------------------------
-  // BODY
-  // ----------------------------------------------------------
-
   Widget _buildBody() {
-    final today =
-    _getToday();
-
-    final tomorrow =
-    _getTomorrow();
+    final today = _getToday();
+    final tomorrow = _getTomorrow();
 
     return ListView(
-      padding:
-      const EdgeInsets.all(16),
-
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       children: [
-        // ====================================================
-        // TODAY
-        // ====================================================
-
         _buildDaySection(
           title: 'Today',
           day: today,
           date: _currentDate,
-          meals: const [
-            'Lunch',
-            'Dinner',
-          ],
+          meals: const ['Lunch', 'Dinner'],
         ),
-
-        const SizedBox(
-          height: 25,
-        ),
-
-        // ====================================================
-        // TOMORROW
-        // ====================================================
-
+        const SizedBox(height: 24),
         _buildDaySection(
           title: 'Tomorrow',
           day: tomorrow,
-          date: _currentDate.add(
-            const Duration(days: 1),
-          ),
-          meals: const [
-            'Breakfast',
-          ],
+          date: _currentDate.add(const Duration(days: 1)),
+          meals: const ['Breakfast'],
         ),
       ],
     );
   }
-
-  // ----------------------------------------------------------
-  // DAY SECTION
-  // ----------------------------------------------------------
 
   Widget _buildDaySection({
     required String title,
@@ -531,273 +422,179 @@ class _MenuRequestsScreenState
     required DateTime date,
     required List<String> meals,
   }) {
+    final dateStr =
+        '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
-
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight:
-            FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(
-          height: 5,
-        ),
-
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(
-              Icons.calendar_today,
-              size: 18,
-            ),
-
-            const SizedBox(
-              width: 8,
-            ),
-
             Text(
-              '$day • '
-                  '${date.day.toString().padLeft(2, '0')}/'
-                  '${date.month.toString().padLeft(2, '0')}/'
-                  '${date.year}',
-              style:
-              const TextStyle(
-                fontSize: 16,
+              '$title ($day)',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.3,
+              ),
+            ),
+            Text(
+              dateStr,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
               ),
             ),
           ],
         ),
 
-        const SizedBox(
-          height: 12,
-        ),
+        const SizedBox(height: 14),
 
-        ...meals.map(
-              (meal) {
-            return _buildMealCard(
-              day: day,
-              meal: meal,
-            );
-          },
-        ),
+        ...meals.map((meal) => _buildMealCard(day: day, meal: meal)),
       ],
     );
   }
-
-  // ----------------------------------------------------------
-  // MEAL CARD
-  // ----------------------------------------------------------
 
   Widget _buildMealCard({
     required String day,
     required String meal,
   }) {
-    final currentMenu =
-    _getMealMenu(
-      day,
-      meal,
-    );
+    final currentMenu = _getMealMenu(day, meal);
+    final requestCount = _getRequestCount(day, meal);
+    final mealColor = _getMealColor(meal);
 
-    final requestCount =
-    _getRequestCount(
-      day,
-      meal,
-    );
-
-    return Card(
-      margin:
-      const EdgeInsets.only(
-        bottom: 12,
-      ),
-
-      child: Padding(
-        padding:
-        const EdgeInsets.all(16),
-
-        child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
-
-          children: [
-            // ------------------------------------------------
-            // MEAL
-            // ------------------------------------------------
-
-            Row(
-              children: [
-                _getMealIcon(meal),
-
-                const SizedBox(
-                  width: 12,
-                ),
-
-                Text(
-                  meal,
-                  style:
-                  const TextStyle(
-                    fontSize: 19,
-                    fontWeight:
-                    FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(
-              height: 15,
-            ),
-
-            // ------------------------------------------------
-            // CURRENT MENU
-            // ------------------------------------------------
-
-            const Text(
-              'Current Menu',
-              style: TextStyle(
-                fontWeight:
-                FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-
-            const SizedBox(
-              height: 6,
-            ),
-
-            Container(
-              width: double.infinity,
-
-              padding:
-              const EdgeInsets.all(
-                12,
-              ),
-
-              decoration:
-              BoxDecoration(
-                border: Border.all(
-                  color:
-                  Colors.grey,
-                ),
-                borderRadius:
-                BorderRadius.circular(
-                  8,
-                ),
-              ),
-
-              child: Text(
-                currentMenu,
-                style:
-                const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            ),
-
-            const SizedBox(
-              height: 12,
-            ),
-
-            // ------------------------------------------------
-            // REQUEST COUNT
-            // ------------------------------------------------
-
-            Row(
-              children: [
-                const Icon(
-                  Icons.people_outline,
-                  size: 22,
-                ),
-
-                const SizedBox(
-                  width: 8,
-                ),
-
-                Text(
-                  requestCount == 1
-                      ? '1 Change Request'
-                      : '$requestCount Change Requests',
-
-                  style:
-                  const TextStyle(
-                    fontWeight:
-                    FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(
-              height: 12,
-            ),
-
-            // ------------------------------------------------
-            // CHANGE MENU BUTTON
-            // ------------------------------------------------
-
-            SizedBox(
-              width: double.infinity,
-
-              child:
-              ElevatedButton.icon(
-                onPressed: () {
-                  _changeMenu(
-                    day,
-                    meal,
-                  );
-                },
-
-                icon: const Icon(
-                  Icons.edit,
-                ),
-
-                label:
-                const Text(
-                  'Change Menu',
-                ),
-              ),
-            ),
-          ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Meal Title + Request Count Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: mealColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(_getMealIcon(meal), color: mealColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    meal,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: requestCount > 0
+                      ? const Color(0xFFFFFBEB)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: requestCount > 0
+                        ? const Color(0xFFFDE68A)
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      requestCount > 0
+                          ? Icons.mark_chat_unread_rounded
+                          : Icons.check_circle_outline_rounded,
+                      size: 14,
+                      color: requestCount > 0
+                          ? const Color(0xFFD97706)
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      requestCount == 1
+                          ? '1 Request'
+                          : '$requestCount Requests',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: requestCount > 0
+                            ? const Color(0xFF92400E)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Current Menu Label & Box
+          const Text(
+            'Current Planned Menu',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Text(
+              currentMenu,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _changeMenu(day, meal),
+              icon: const Icon(Icons.edit_rounded, size: 16),
+              label: const Text('Update Menu & Resolve Requests'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
-
-  // ----------------------------------------------------------
-  // ICON
-  // ----------------------------------------------------------
-
-  Widget _getMealIcon(
-      String meal,
-      ) {
-    switch (meal) {
-      case 'Breakfast':
-        return const Icon(
-          Icons.free_breakfast,
-          size: 30,
-        );
-
-      case 'Lunch':
-        return const Icon(
-          Icons.lunch_dining,
-          size: 30,
-        );
-
-      case 'Dinner':
-        return const Icon(
-          Icons.dinner_dining,
-          size: 30,
-        );
-
-      default:
-        return const Icon(
-          Icons.restaurant,
-          size: 30,
-        );
-    }
-  }
-}
+}

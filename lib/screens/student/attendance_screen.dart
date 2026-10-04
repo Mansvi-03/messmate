@@ -95,18 +95,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       const months = [
         '',
-        'January',
-        'February',
-        'March',
-        'April',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
         'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
 
       return '$day ${months[month]} $year';
@@ -129,7 +129,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance'),
+        title: const Text('My Attendance'),
       ),
       body: _buildBody(),
     );
@@ -147,7 +147,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         child: Text(
           _errorMessage!,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 15,
+            color: Color(0xFF64748B),
           ),
         ),
       );
@@ -158,11 +159,42 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         onRefresh: _loadAttendance,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 200),
+          children: [
+            const SizedBox(height: 120),
             Center(
-              child: Text(
-                'No attendance records found.',
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.event_busy_rounded,
+                      size: 36,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Attendance Records',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Records will appear here once marked by the mess manager.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -170,59 +202,146 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
+    final percentage = _attendancePercentage();
+
     return RefreshIndicator(
       onRefresh: _loadAttendance,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Text(
-                    'Attendance Summary',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _summaryItem(
-                        'Present',
-                        _presentCount.toString(),
-                      ),
-                      _summaryItem(
-                        'Absent',
-                        _absentCount.toString(),
-                      ),
-                      _summaryItem(
-                        'Percentage',
-                        '${_attendancePercentage().toStringAsFixed(1)}%',
-                      ),
-                    ],
-                  ),
-                ],
+          // Attendance Summary Hero Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Attendance Overview',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Percentage & Stats Row
+                Row(
+                  children: [
+                    // Circular indicator representation
+                    Container(
+                      width: 82,
+                      height: 82,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: percentage >= 75
+                            ? const Color(0xFFECFDF5)
+                            : (percentage >= 50 ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2)),
+                        border: Border.all(
+                          color: percentage >= 75
+                              ? const Color(0xFF10B981)
+                              : (percentage >= 50 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
+                          width: 3.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${percentage.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: percentage >= 75
+                                    ? const Color(0xFF065F46)
+                                    : (percentage >= 50 ? const Color(0xFFB45309) : const Color(0xFF991B1B)),
+                              ),
+                            ),
+                            const Text(
+                              'Rate',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 20),
+
+                    // Present & Absent Badges
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _statTile(
+                            label: 'Present Meals',
+                            count: _presentCount.toString(),
+                            icon: Icons.check_circle_rounded,
+                            color: const Color(0xFF059669),
+                            bgColor: const Color(0xFFECFDF5),
+                          ),
+                          const SizedBox(height: 8),
+                          _statTile(
+                            label: 'Absent Meals',
+                            count: _absentCount.toString(),
+                            icon: Icons.cancel_rounded,
+                            color: const Color(0xFFEF4444),
+                            bgColor: const Color(0xFFFEF2F2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
 
-          const Text(
-            'Attendance Records',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Meal Records',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                '${_attendance.length} Total Logs',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           ..._attendance.map((item) {
             final date = item['date']?.toString() ?? '';
@@ -231,47 +350,147 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             final mealName = _formatMeal(mealRaw);
             final timing = _getMealTiming(mealRaw);
+            final mealColor = _getMealColor(mealRaw);
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(
-                  _getMealIcon(mealRaw),
-                  size: 28,
-                  color: isPresent ? Colors.green : Colors.grey,
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFE2E8F0),
+                  width: 1,
                 ),
-                title: Text(
-                  '$mealName • ${_formatDate(date)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(
-                  'Mess Timing: $timing',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isPresent ? Colors.green.shade50 : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isPresent ? Colors.green : Colors.red,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: mealColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _getMealIcon(mealRaw),
+                      color: mealColor,
+                      size: 22,
                     ),
                   ),
-                  child: Text(
-                    isPresent ? 'Present' : 'Absent',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isPresent ? Colors.green.shade800 : Colors.red.shade800,
+
+                  const SizedBox(width: 14),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$mealName • ${_formatDate(date)}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 13,
+                              color: Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              timing,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isPresent ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isPresent ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isPresent ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          size: 14,
+                          color: isPresent ? const Color(0xFF059669) : const Color(0xFFEF4444),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isPresent ? 'Present' : 'Absent',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isPresent ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  Widget _statTile({
+    required String label,
+    required String count,
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -294,27 +513,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return 'Mess Hours';
   }
 
-  IconData _getMealIcon(String meal) {
+  Color _getMealColor(String meal) {
     final m = meal.trim().toLowerCase();
-    if (m == 'breakfast') return Icons.free_breakfast;
-    if (m == 'lunch') return Icons.lunch_dining;
-    if (m == 'dinner') return Icons.dinner_dining;
-    return Icons.restaurant;
+    if (m == 'breakfast') return const Color(0xFFD97706);
+    if (m == 'lunch') return const Color(0xFF0284C7);
+    if (m == 'dinner') return const Color(0xFF7C3AED);
+    return const Color(0xFF059669);
   }
 
-  Widget _summaryItem(String title, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(title),
-      ],
-    );
+  IconData _getMealIcon(String meal) {
+    final m = meal.trim().toLowerCase();
+    if (m == 'breakfast') return Icons.free_breakfast_rounded;
+    if (m == 'lunch') return Icons.lunch_dining_rounded;
+    if (m == 'dinner') return Icons.dinner_dining_rounded;
+    return Icons.restaurant_rounded;
   }
-}
+}

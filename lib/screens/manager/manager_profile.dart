@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/firestore_service.dart';
+import '../auth/login_screen.dart';
 
 class ManagerProfile extends StatefulWidget {
   const ManagerProfile({super.key});
@@ -92,7 +93,19 @@ class _ManagerProfileState extends State<ManagerProfile> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Edit Profile'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_rounded, color: Color(0xFF059669)),
+              SizedBox(width: 10),
+              Text(
+                'Edit Profile',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -102,38 +115,31 @@ class _ManagerProfileState extends State<ManagerProfile> {
                   TextFormField(
                     controller: nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Name',
-                      prefixIcon: Icon(Icons.person),
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your name';
                       }
-
                       return null;
                     },
                   ),
-
-                  const SizedBox(height: 15),
-
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: contactController,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       labelText: 'Contact Number',
-                      prefixIcon: Icon(Icons.phone),
+                      prefixIcon: Icon(Icons.phone_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter contact number';
                       }
-
-                      if (!RegExp(
-                        r'^[0-9]{10}$',
-                      ).hasMatch(value.trim())) {
+                      if (!RegExp(r'^[0-9]{10}$').hasMatch(value.trim())) {
                         return 'Enter a valid 10-digit number';
                       }
-
                       return null;
                     },
                   ),
@@ -161,7 +167,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
                   contactController.text.trim(),
                 );
               },
-              child: const Text('Save'),
+              child: const Text('Save Changes'),
             ),
           ],
         );
@@ -173,9 +179,9 @@ class _ManagerProfileState extends State<ManagerProfile> {
   }
 
   Future<void> _updateManagerProfile(
-      String name,
-      String contactNumber,
-      ) async {
+    String name,
+    String contactNumber,
+  ) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -247,7 +253,19 @@ class _ManagerProfileState extends State<ManagerProfile> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Change Password'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_outline_rounded, color: Color(0xFF0284C7)),
+                  SizedBox(width: 10),
+                  Text(
+                    'Change Password',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -259,7 +277,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Current Password',
-                          prefixIcon: Icon(Icons.lock),
+                          prefixIcon: Icon(Icons.lock_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -268,15 +286,13 @@ class _ManagerProfileState extends State<ManagerProfile> {
                           return null;
                         },
                       ),
-
-                      const SizedBox(height: 15),
-
+                      const SizedBox(height: 14),
                       TextFormField(
                         controller: newPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'New Password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                          prefixIcon: Icon(Icons.lock_reset_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -288,15 +304,13 @@ class _ManagerProfileState extends State<ManagerProfile> {
                           return null;
                         },
                       ),
-
-                      const SizedBox(height: 15),
-
+                      const SizedBox(height: 14),
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Confirm New Password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                          prefixIcon: Icon(Icons.lock_clock_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -348,7 +362,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               const SnackBar(
                                 content: Text('Password changed successfully.'),
                               ),
@@ -372,7 +386,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               SnackBar(
                                 content: Text(message),
                               ),
@@ -384,7 +398,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(this.context).showSnackBar(
                               const SnackBar(
                                 content: Text('Something went wrong.'),
                               ),
@@ -395,9 +409,12 @@ class _ManagerProfileState extends State<ManagerProfile> {
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Change Password'),
+                      : const Text('Update Password'),
                 ),
               ],
             );
@@ -416,44 +433,65 @@ class _ManagerProfileState extends State<ManagerProfile> {
   // ------------------------------------------------------------
 
   Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 10),
+            Text(
+              'Sign Out',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to sign out from the manager portal?',
+          style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     try {
-      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
 
-      // Go back to the login screen
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
-            (route) => false,
-      );
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase logout error: ${e.code}');
-      debugPrint('Message: ${e.message}');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Logout failed: ${e.message ?? e.code}',
-          ),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
         ),
+        (route) => false,
       );
     } catch (e) {
-      debugPrint('Logout/navigation error: $e');
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Logout failed: $e',
-          ),
+          content: Text('Logout failed: $e'),
         ),
       );
     }
   }
+
   // ------------------------------------------------------------
   // UI
   // ------------------------------------------------------------
@@ -461,6 +499,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Manager Profile'),
       ),
@@ -471,7 +510,7 @@ class _ManagerProfileState extends State<ManagerProfile> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(color: Color(0xFF059669)),
       );
     }
 
@@ -480,98 +519,254 @@ class _ManagerProfileState extends State<ManagerProfile> {
         child: Text(
           _errorMessage!,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 15,
+            color: Color(0xFF64748B),
           ),
         ),
       );
     }
 
+    final name = _managerData?['name']?.toString() ?? 'Mess Administrator';
+    final email = _managerData?['email']?.toString() ?? '';
+    final contact = _managerData?['contactNumber']?.toString() ?? 'Not provided';
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'M';
+
     return RefreshIndicator(
       onRefresh: _loadManagerProfile,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
+          // Manager Profile Header Hero Card
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF0F172A),
+                  Color(0xFF1E293B),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: const Color(0xFF059669),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        email,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF059669).withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF059669).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Text(
+                          'MESS ADMINISTRATOR',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF34D399),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           const Text(
-            'Manager Profile',
+            'Account Information',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
             ),
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(height: 12),
 
-          _profileItem(
-            Icons.person,
-            'Name',
-            _managerData?['name'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.email,
-            'Email',
-            _managerData?['email'] ?? 'Not available',
-          ),
-
-          _profileItem(
-            Icons.phone,
-            'Contact',
-            _managerData?['contactNumber'] ?? 'Not available',
-          ),
-
-          const SizedBox(height: 25),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isSaving ? null : _editProfile,
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit Profile'),
+          // Information Group Container
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                _profileRow(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: const Color(0xFF059669),
+                  title: 'Manager Name',
+                  value: name,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.email_outlined,
+                  iconColor: const Color(0xFF0284C7),
+                  title: 'Official Email',
+                  value: email,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.phone_outlined,
+                  iconColor: const Color(0xFFD97706),
+                  title: 'Contact Phone',
+                  value: contact,
+                ),
+                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                _profileRow(
+                  icon: Icons.admin_panel_settings_outlined,
+                  iconColor: const Color(0xFF7C3AED),
+                  title: 'System Access Level',
+                  value: 'Full Administration & Financial Control',
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 26),
 
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _changePassword,
-              icon: const Icon(Icons.lock),
-              label: const Text('Change Password'),
+          // Actions
+          ElevatedButton.icon(
+            onPressed: _isSaving ? null : _editProfile,
+            icon: const Icon(Icons.edit_rounded, size: 18),
+            label: const Text('Edit Profile Details'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
+          OutlinedButton.icon(
+            onPressed: _changePassword,
+            icon: const Icon(Icons.lock_outline_rounded, size: 18),
+            label: const Text('Change Password'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
+
+          const SizedBox(height: 12),
+
+          TextButton.icon(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout_rounded, size: 18, color: Color(0xFFEF4444)),
+            label: const Text(
+              'Sign Out from Account',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _profileItem(
-      IconData icon,
-      String title,
-      String value,
-      ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(
-          value.toString(),
-          style: const TextStyle(
-            fontSize: 16,
+  Widget _profileRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
