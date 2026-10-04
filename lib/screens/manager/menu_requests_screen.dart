@@ -227,8 +227,6 @@ class _MenuRequestsScreenState
     await showDialog<String>(
       context: context,
       builder: (context) {
-        bool isSaving = false;
-
         return StatefulBuilder(
           builder: (
               context,
@@ -275,49 +273,26 @@ class _MenuRequestsScreenState
 
               actions: [
                 TextButton(
-                  onPressed:
-                  isSaving
-                      ? null
-                      : () {
+                  onPressed: () {
                     Navigator.pop(
                       context,
                     );
                   },
-                  child:
-                  const Text(
-                    'Cancel',
-                  ),
+                  child: const Text('Cancel'),
                 ),
 
                 ElevatedButton(
-                  onPressed: isSaving
-                      ? null
-                      : () {
-                    if (!formKey
-                        .currentState!
-                        .validate()) {
+                  onPressed: () {
+                    if (!formKey.currentState!.validate()) {
                       return;
                     }
 
                     Navigator.pop(
                       context,
-                      controller.text
-                          .trim(),
+                      controller.text.trim(),
                     );
                   },
-
-                  child: isSaving
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child:
-                    CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text(
-                    'Save',
-                  ),
+                  child: const Text('Save'),
                 ),
               ],
             );
@@ -365,12 +340,28 @@ class _MenuRequestsScreenState
         );
       }
 
-      updatedMenu['day'] =
-          day;
+      final canonicalDay = day.trim().isEmpty
+          ? day
+          : day.trim()[0].toUpperCase() + day.trim().substring(1).toLowerCase();
 
-      updatedMenu[
-      meal.toLowerCase()] =
-          newMenu;
+      updatedMenu['day'] = canonicalDay;
+
+      final existingMealData = updatedMenu[meal.toLowerCase()];
+      double existingPrice = 0;
+      if (existingMealData is Map) {
+        final p = existingMealData['price'];
+        if (p is num) existingPrice = p.toDouble();
+      }
+      if (existingPrice <= 0) {
+        existingPrice = meal.toLowerCase() == 'breakfast'
+            ? 40.0
+            : (meal.toLowerCase() == 'lunch' ? 60.0 : 50.0);
+      }
+
+      updatedMenu[meal.toLowerCase()] = {
+        'menu': newMenu.trim(),
+        'price': existingPrice,
+      };
 
       // ------------------------------------------------------
       // UPDATE ACTUAL MENU
@@ -378,9 +369,18 @@ class _MenuRequestsScreenState
 
       await _firestoreService.add(
         'menus',
-        day,
+        canonicalDay,
         updatedMenu,
       );
+
+      if (canonicalDay.toLowerCase() != canonicalDay) {
+        try {
+          await _firestoreService.delete(
+            'menus',
+            canonicalDay.toLowerCase(),
+          );
+        } catch (_) {}
+      }
 
       // ------------------------------------------------------
       // MARK RELATED REQUESTS AS HANDLED

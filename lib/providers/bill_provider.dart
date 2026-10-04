@@ -98,16 +98,14 @@ class BillProvider extends ChangeNotifier {
           id: _bill!.id,
           studentId: _bill!.studentId,
           month: _bill!.month,
-          breakfastAmount:
-          _bill!.breakfastAmount,
-          lunchAmount:
-          _bill!.lunchAmount,
-          dinnerAmount:
-          _bill!.dinnerAmount,
-          totalAmount:
-          _bill!.totalAmount,
-          paidAmount:
-          newPaidAmount,
+          breakfastCount: _bill!.breakfastCount,
+          breakfastAmount: _bill!.breakfastAmount,
+          lunchCount: _bill!.lunchCount,
+          lunchAmount: _bill!.lunchAmount,
+          dinnerCount: _bill!.dinnerCount,
+          dinnerAmount: _bill!.dinnerAmount,
+          totalAmount: _bill!.totalAmount,
+          paidAmount: newPaidAmount,
           status: newStatus,
         );
 

@@ -35,6 +35,12 @@ class _MenuManagementState extends State<MenuManagement> {
     _loadMenu();
   }
 
+  static String _canonicalDay(String day) {
+    if (day.trim().isEmpty) return day;
+    final d = day.trim();
+    return d[0].toUpperCase() + d.substring(1).toLowerCase();
+  }
+
   Future<void> _loadMenu() async {
     try {
       final menuData = await _firestoreService.getAll('menus');
@@ -42,10 +48,15 @@ class _MenuManagementState extends State<MenuManagement> {
       final Map<String, Map<String, dynamic>> loadedMenu = {};
 
       for (final item in menuData) {
-        final day = item['day']?.toString();
+        final rawDay = item['day']?.toString() ?? item['id']?.toString() ?? '';
+        final canonical = _canonicalDay(rawDay);
 
-        if (day != null && day.isNotEmpty) {
-          loadedMenu[day] = item;
+        if (canonical.isNotEmpty && _days.contains(canonical)) {
+          final docId = item['id']?.toString() ?? '';
+          // Prefer document whose ID exactly matches canonical day, or add if missing
+          if (docId == canonical || !loadedMenu.containsKey(canonical)) {
+            loadedMenu[canonical] = item;
+          }
         }
       }
 
@@ -191,9 +202,11 @@ class _MenuManagementState extends State<MenuManagement> {
       double price,
       ) async {
     try {
+      final canonicalDay = _canonicalDay(day);
+
       final existingMenu = await _firestoreService.get(
         'menus',
-        day,
+        canonicalDay,
       );
 
       final Map<String, dynamic> updatedMenu = {};
@@ -202,7 +215,7 @@ class _MenuManagementState extends State<MenuManagement> {
         updatedMenu.addAll(existingMenu);
       }
 
-      updatedMenu['day'] = day;
+      updatedMenu['day'] = canonicalDay;
 
       updatedMenu[meal.toLowerCase()] = {
         'menu': menuText.trim(),
@@ -211,11 +224,26 @@ class _MenuManagementState extends State<MenuManagement> {
 
       await _firestoreService.add(
         'menus',
-        day,
+        canonicalDay,
         updatedMenu,
       );
 
+      // Clean up legacy lowercase document if different
+      if (canonicalDay.toLowerCase() != canonicalDay) {
+        try {
+          await _firestoreService.delete(
+            'menus',
+            canonicalDay.toLowerCase(),
+          );
+        } catch (_) {}
+      }
+
       if (!mounted) return;
+
+      // Update local state immediately
+      setState(() {
+        _menu[canonicalDay] = updatedMenu;
+      });
 
       await _loadMenu();
 
@@ -402,11 +430,11 @@ class _MenuManagementState extends State<MenuManagement> {
                       price,
                     );
 
-                    if (!mounted) return;
-
-                    Navigator.pop(
-                      dialogContext,
-                    );
+                    if (dialogContext.mounted) {
+                      Navigator.pop(
+                        dialogContext,
+                      );
+                    }
                   },
                   child: isSaving
                       ? const SizedBox(

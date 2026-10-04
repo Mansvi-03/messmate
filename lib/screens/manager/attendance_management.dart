@@ -279,14 +279,10 @@
               dynamic priceValue = mealData['price'];
 
               // Support "amount" if the menu uses that field.
-              if (priceValue == null) {
-                priceValue = mealData['amount'];
-              }
+              priceValue ??= mealData['amount'];
 
               // Support "mealPrice" if used in menu data.
-              if (priceValue == null) {
-                priceValue = mealData['mealPrice'];
-              }
+              priceValue ??= mealData['mealPrice'];
 
               double mealPrice = 0;
 
@@ -362,54 +358,6 @@
                     'menu': _getMealMenu(_todayMenuData, _selectedMeal),
                   },
                 );
-
-                // ==========================================
-                // PRESENT -> CREATE / UPDATE BILL
-                // ==========================================
-
-                if (isPresent) {
-                  final existingBill = await _firestoreService.get('bills', recordId);
-                  final existingStatus = existingBill?['status']?.toString();
-
-                  await _firestoreService.add(
-                    'bills',
-                    recordId,
-                    {
-                      'studentId': studentId,
-                      'date': date,
-                      'day': _today,
-                      'meal': mealKey,
-
-                      // The actual meal price.
-                      'amount': mealPrice,
-
-                      // Store price as well for clarity.
-                      'price': mealPrice,
-
-                      'status': (existingStatus != null && existingStatus.isNotEmpty)
-                          ? existingStatus
-                          : 'unpaid',
-
-                      'createdAt': existingBill?['createdAt'] ??
-                          DateTime.now().toIso8601String(),
-                    },
-                  );
-                }
-
-                // ==========================================
-                // ABSENT -> DELETE BILL
-                // ==========================================
-
-                else {
-                  try {
-                    await _firestoreService.delete(
-                      'bills',
-                      recordId,
-                    );
-                  } catch (_) {
-                    // Bill may not exist.
-                  }
-                }
               }
 
               if (!mounted) return;
@@ -437,11 +385,11 @@
                 ),
               );
             } finally {
-              if (!mounted) return;
-
-              setState(() {
-                _saving = false;
-              });
+              if (mounted) {
+                setState(() {
+                  _saving = false;
+                });
+              }
             }
           }
 
