@@ -192,13 +192,14 @@ class BillCalculator {
     required Map<String, Map<String, dynamic>> menusByDay,
     required String billingPeriod,
   }) {
-    final studentId = student['id']?.toString() ?? '';
+    final studentId = (student['id'] ?? student['studentId'] ?? student['uid'] ?? '').toString();
     final studentName = student['name']?.toString() ?? 'Student';
     final studentEmail = student['email']?.toString() ?? '';
     final periodLabel = getMonthLabel(billingPeriod);
 
     final matchingAttendance = attendanceList.where((item) {
-      if (item['studentId']?.toString() != studentId) return false;
+      final itemStudentId = (item['studentId'] ?? item['student_id'] ?? item['userId'] ?? '').toString();
+      if (itemStudentId != studentId) return false;
       if (item['present'] != true) return false;
       if (billingPeriod != 'all') {
         final date = item['date']?.toString() ?? '';
@@ -284,8 +285,9 @@ class BillCalculator {
 
     final periodDocId = '${studentId}_$billingPeriod';
     for (final b in billsList) {
+      final bStudentId = (b['studentId'] ?? b['student_id'] ?? '').toString();
       if (b['id'] == periodDocId ||
-          (b['studentId'] == studentId &&
+          (bStudentId == studentId &&
               b['period'] == billingPeriod &&
               b['period'] != null)) {
         final s = (b['status']?.toString() ?? '').toLowerCase();
@@ -303,8 +305,9 @@ class BillCalculator {
       for (final att in matchingAttendance) {
         final recId = att['id']?.toString() ?? '';
         for (final b in billsList) {
+          final bStudentId = (b['studentId'] ?? b['student_id'] ?? '').toString();
           if (b['id'] == recId ||
-              (b['studentId'] == studentId &&
+              (bStudentId == studentId &&
                   b['date'] == att['date'] &&
                   b['meal'] == att['meal'])) {
             legacyTotalCount++;

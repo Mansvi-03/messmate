@@ -28,7 +28,15 @@ class FirestoreService {
       return null;
     }
 
-    return document.data();
+    final data = document.data() ?? {};
+    final id = (data['id'] != null && data['id'].toString().isNotEmpty)
+        ? data['id'].toString()
+        : document.id;
+
+    return {
+      ...data,
+      'id': id,
+    };
   }
 
   Future<void> update(
@@ -59,9 +67,13 @@ class FirestoreService {
     await _firestore.collection(collection).get();
 
     return snapshot.docs.map((document) {
+      final data = document.data();
+      final id = (data['id'] != null && data['id'].toString().isNotEmpty)
+          ? data['id'].toString()
+          : document.id;
       return {
-        'id': document.id,
-        ...document.data(),
+        ...data,
+        'id': id,
       };
     }).toList();
   }
@@ -77,9 +89,13 @@ class FirestoreService {
         .get();
 
     return snapshot.docs.map((document) {
+      final data = document.data();
+      final id = (data['id'] != null && data['id'].toString().isNotEmpty)
+          ? data['id'].toString()
+          : document.id;
       return {
-        'id': document.id,
-        ...document.data(),
+        ...data,
+        'id': id,
       };
     }).toList();
   }

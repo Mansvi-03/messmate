@@ -48,11 +48,19 @@ class _BillScreenState extends State<BillScreen> {
       }
 
       final studentDoc = await _firestoreService.get('students', user.uid);
-      final student = studentDoc ?? {
+      final student = <String, dynamic>{
         'id': user.uid,
-        'name': user.displayName ?? 'Student',
-        'email': user.email ?? '',
+        ...?studentDoc,
+        'name': (studentDoc?['name']?.toString().isNotEmpty ?? false)
+            ? studentDoc!['name']
+            : (user.displayName ?? 'Student'),
+        'email': (studentDoc?['email']?.toString().isNotEmpty ?? false)
+            ? studentDoc!['email']
+            : (user.email ?? ''),
       };
+      if (student['id'] == null || student['id'].toString().isEmpty) {
+        student['id'] = user.uid;
+      }
 
       final attendance = await _firestoreService.getAll('attendance');
       final bills = await _firestoreService.getAll('bills');
@@ -67,7 +75,10 @@ class _BillScreenState extends State<BillScreen> {
       }
 
       final periods = BillCalculator.getAvailableBillingPeriods(
-        attendance.where((a) => a['studentId'] == user.uid).toList(),
+        attendance.where((a) {
+          final sId = (a['studentId'] ?? a['student_id'] ?? a['userId'] ?? '').toString();
+          return sId == user.uid || sId == student['id'];
+        }).toList(),
       );
 
       String activePeriod = _selectedPeriod;
@@ -151,6 +162,13 @@ class _BillScreenState extends State<BillScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Mess Bill'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: _loadBill,
+          ),
+        ],
       ),
       body: _buildBody(),
     );
