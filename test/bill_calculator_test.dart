@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:messmate/services/bill_calculator.dart';
 
 void main() {
-  group('BillCalculator (R.5 Student Meal Attendance and Bill)', () {
+  group('BillCalculator (Student Meal Attendance and Bill)', () {
     test('Calculates exact bill according to example', () {
       final student = {
         'id': 'student_1',
@@ -59,13 +59,13 @@ void main() {
         billingPeriod: '2026-10',
       );
 
-      // R.5.2 Calculate Number of Meals
+      // Calculate Number of Meals
       expect(summary.breakfastCount, 20);
       expect(summary.lunchCount, 22);
       expect(summary.dinnerCount, 18);
       expect(summary.totalMeals, 60);
 
-      // R.5.3 Calculate Student Bill
+      // Calculate Student Bill
       expect(summary.breakfastTotal, 800.0);
       expect(summary.lunchTotal, 1320.0);
       expect(summary.dinnerTotal, 900.0);

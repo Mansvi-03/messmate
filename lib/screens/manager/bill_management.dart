@@ -177,239 +177,483 @@ class _BillManagementState extends State<BillManagement> {
     }
   }
 
-  void _showDetailedBillDialog(StudentBillSummary summary) {
-    showDialog(
+  void _showDetailedBillDialog(StudentBillSummary initialSummary) {
+    showModalBottomSheet(
       context: context,
-      builder: (dialogCtx) {
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetCtx) {
+        StudentBillSummary summary = initialSummary;
+
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (context, setSheetState) {
             final isPaid = summary.status == 'paid';
+            final mediaQuery = MediaQuery.of(context);
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF2563EB), size: 22),
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Container(
+                  height: mediaQuery.size.height * 0.90,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          summary.studentName,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          summary.billingPeriodLabel,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Status Bar
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isPaid ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isPaid ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                      // Top Drag Handle Bar
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4.5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(3),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Header Bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              isPaid ? 'Payment Received' : 'Payment Pending',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: isPaid ? const Color(0xFF065F46) : const Color(0xFF991B1B),
-                              ),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                minimumSize: Size.zero,
-                              ),
-                              onPressed: () async {
-                                final next = isPaid ? 'unpaid' : 'paid';
-                                await _updateStudentBillStatus(summary, next);
-                                setDialogState(() {
-                                  summary = summary.copyWith(status: next);
-                                });
-                              },
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
                               child: Text(
-                                isPaid ? 'Mark UNPAID' : 'Mark PAID',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                                summary.studentName.trim().isNotEmpty
+                                    ? summary.studentName.trim()[0].toUpperCase()
+                                    : 'S',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: Color(0xFF2563EB),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      const Text(
-                        'Calculation Breakdown (R.5.3)',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                      ),
-                      const SizedBox(height: 8),
-
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Column(
-                          children: [
-                            _calcRow(
-                              'Breakfast',
-                              summary.breakfastCount,
-                              summary.breakfastTotal,
-                            ),
-                            const SizedBox(height: 6),
-                            _calcRow(
-                              'Lunch',
-                              summary.lunchCount,
-                              summary.lunchTotal,
-                            ),
-                            const SizedBox(height: 6),
-                            _calcRow(
-                              'Dinner',
-                              summary.dinnerCount,
-                              summary.dinnerTotal,
-                            ),
-                            const Divider(height: 18, color: Color(0xFFE2E8F0)),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Total Statement Bill',
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                                ),
-                                Text(
-                                  '₹${summary.totalBill.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 18,
-                                    color: Color(0xFF0F172A),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    summary.studentName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF0F172A),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Total Meals Consumed: ${summary.totalMeals}',
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      const Text(
-                        'Meal Consumption Logs (R.5.1)',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                      ),
-                      const SizedBox(height: 8),
-
-                      if (summary.consumptions.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            'No recorded meals for this period.',
-                            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                          ),
-                        )
-                      else
-                        ...summary.consumptions.map((item) {
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 6),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _getMealIcon(item.meal),
-                                  size: 18,
-                                  color: const Color(0xFF64748B),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  const SizedBox(height: 2),
+                                  Row(
                                     children: [
-                                      Text(
-                                        '${item.meal[0].toUpperCase()}${item.meal.substring(1)} • ${item.date}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                        ),
+                                      const Icon(
+                                        Icons.calendar_month_rounded,
+                                        size: 13,
+                                        color: Color(0xFF64748B),
                                       ),
+                                      const SizedBox(width: 4),
                                       Text(
-                                        item.menu,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        summary.billingPeriodLabel,
                                         style: const TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                           color: Color(0xFF64748B),
                                         ),
                                       ),
                                     ],
                                   ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.pop(bottomSheetCtx),
+                              icon: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF1F5F9),
+                                  shape: BoxShape.circle,
                                 ),
-                                Text(
-                                  '₹${item.price.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14,
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              tooltip: 'Close',
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                      // Scrollable Body
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          children: [
+                            // Status Banner
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isPaid ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isPaid ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isPaid ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                      size: 20,
+                                      color: isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isPaid ? 'Payment Received' : 'Payment Pending',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: isPaid ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          isPaid
+                                              ? 'All dues settled for this period'
+                                              : 'Dues are currently unpaid',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isPaid ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      final next = isPaid ? 'unpaid' : 'paid';
+                                      await _updateStudentBillStatus(summary, next);
+                                      setSheetState(() {
+                                        summary = summary.copyWith(status: next);
+                                      });
+                                    },
+                                    child: Text(
+                                      isPaid ? 'Mark UNPAID' : 'Mark PAID',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Calculation Breakdown Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Calculation Breakdown',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${summary.totalMeals} Meals Total',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF475569),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        }),
+                            const SizedBox(height: 10),
+
+                            // Breakdown Card
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                children: [
+                                  _calcRow(
+                                    'Breakfast',
+                                    summary.breakfastCount,
+                                    summary.breakfastTotal,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _calcRow(
+                                    'Lunch',
+                                    summary.lunchCount,
+                                    summary.lunchTotal,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _calcRow(
+                                    'Dinner',
+                                    summary.dinnerCount,
+                                    summary.dinnerTotal,
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Total Statement Bill',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 14,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Final calculated payable',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        '₹${summary.totalBill.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 22,
+                                          color: isPaid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 22),
+
+                            // Meal Consumption Logs Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Meal Consumption Logs',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                                Text(
+                                  '${summary.consumptions.length} Records',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            if (summary.consumptions.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.restaurant_outlined,
+                                        size: 36,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No recorded meals for this period.',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ...summary.consumptions.map((item) {
+                                final mealColor = _getMealColor(item.meal);
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.02),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: mealColor.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          _getMealIcon(item.meal),
+                                          size: 20,
+                                          color: mealColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  '${item.meal[0].toUpperCase()}${item.meal.substring(1)}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 14,
+                                                    color: Color(0xFF0F172A),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  '•  ${item.date}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              item.menu.trim().isNotEmpty
+                                                  ? item.menu
+                                                  : 'Standard meal menu',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF64748B),
+                                                height: 1.25,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '₹${item.price.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+
+                      // Bottom Action Button
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(bottomSheetCtx),
+                            child: const Text(
+                              'Close Statement',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text('Close'),
-                ),
-              ],
             );
           },
         );
@@ -418,25 +662,52 @@ class _BillManagementState extends State<BillManagement> {
   }
 
   Widget _calcRow(String meal, int count, double total) {
+    final mealColor = _getMealColor(meal);
     final countLabel = count == 0
         ? '0 meals attended'
         : '$count meal${count > 1 ? 's' : ''} attended (per menu rate)';
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Icon(_getMealIcon(meal), size: 16, color: _getMealColor(meal)),
-            const SizedBox(width: 8),
-            Text(
-              '$meal ($countLabel)',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w500),
-            ),
-          ],
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: mealColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(_getMealIcon(meal), size: 16, color: mealColor),
         ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                meal,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                countLabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
         Text(
           '₹${total.toStringAsFixed(0)}',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: Color(0xFF0F172A),
+          ),
         ),
       ],
     );
@@ -597,35 +868,58 @@ class _BillManagementState extends State<BillManagement> {
 
                   const SizedBox(height: 14),
 
-                  // Search & Filter Controls
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Search student...',
-                            prefixIcon: const Icon(Icons.search, size: 18),
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  // Search & Filter Controls (Mobile-Optimized)
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search student by name...',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      fillColor: Colors.white,
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                    ),
+                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        segments: const [
-                          ButtonSegment(value: 'all', label: Text('All', style: TextStyle(fontSize: 12))),
-                          ButtonSegment(value: 'unpaid', label: Text('Unpaid', style: TextStyle(fontSize: 12))),
-                          ButtonSegment(value: 'paid', label: Text('Paid', style: TextStyle(fontSize: 12))),
-                        ],
-                        selected: {_statusFilter},
-                        onSelectionChanged: (set) => setState(() => _statusFilter = set.first),
-                      ),
-                    ],
+                      segments: const [
+                        ButtonSegment(value: 'all', label: Text('All Bills', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                        ButtonSegment(value: 'unpaid', label: Text('Pending', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                        ButtonSegment(value: 'paid', label: Text('Settled', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                      ],
+                      selected: {_statusFilter},
+                      onSelectionChanged: (set) => setState(() => _statusFilter = set.first),
+                    ),
                   ),
 
                   const SizedBox(height: 12),
@@ -732,28 +1026,21 @@ class _BillManagementState extends State<BillManagement> {
 
                             const SizedBox(height: 10),
 
-                            // Meals count preview row
+                            // Meals count preview row (Mobile-Safe Wrap)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              child: Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                runSpacing: 6,
+                                spacing: 8,
                                 children: [
-                                  Text(
-                                    'Breakfast: ${summary.breakfastCount} (₹${summary.breakfastTotal.toStringAsFixed(0)})',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                                  ),
-                                  Text(
-                                    'Lunch: ${summary.lunchCount} (₹${summary.lunchTotal.toStringAsFixed(0)})',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                                  ),
-                                  Text(
-                                    'Dinner: ${summary.dinnerCount} (₹${summary.dinnerTotal.toStringAsFixed(0)})',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                                  ),
+                                  _mealMiniChip('Breakfast', summary.breakfastCount, summary.breakfastTotal, const Color(0xFFD97706)),
+                                  _mealMiniChip('Lunch', summary.lunchCount, summary.lunchTotal, const Color(0xFF0284C7)),
+                                  _mealMiniChip('Dinner', summary.dinnerCount, summary.dinnerTotal, const Color(0xFF7C3AED)),
                                 ],
                               ),
                             ),
@@ -804,6 +1091,28 @@ class _BillManagementState extends State<BillManagement> {
           Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
         ],
       ),
+    );
+  }
+
+  Widget _mealMiniChip(String name, int count, double total, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          '$name: $count (₹${total.toStringAsFixed(0)})',
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF475569),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

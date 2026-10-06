@@ -361,7 +361,7 @@ class _BillScreenState extends State<BillScreen> {
 
           const SizedBox(height: 18),
 
-          // Bill Calculation Breakdown Card (R.5.3)
+          // Bill Calculation Breakdown Card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -495,7 +495,7 @@ class _BillScreenState extends State<BillScreen> {
 
           const SizedBox(height: 24),
 
-          // Meal Consumption History (R.5.1)
+          // Meal Consumption History
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
