@@ -398,7 +398,6 @@ class _BillScreenState extends State<BillScreen> {
                   meal: 'Breakfast',
                   icon: Icons.free_breakfast_rounded,
                   color: const Color(0xFFD97706),
-                  unitPrice: summary.breakfastUnitPrice,
                   count: summary.breakfastCount,
                   total: summary.breakfastTotal,
                 ),
@@ -408,7 +407,6 @@ class _BillScreenState extends State<BillScreen> {
                   meal: 'Lunch',
                   icon: Icons.lunch_dining_rounded,
                   color: const Color(0xFF0284C7),
-                  unitPrice: summary.lunchUnitPrice,
                   count: summary.lunchCount,
                   total: summary.lunchTotal,
                 ),
@@ -418,12 +416,39 @@ class _BillScreenState extends State<BillScreen> {
                   meal: 'Dinner',
                   icon: Icons.dinner_dining_rounded,
                   color: const Color(0xFF7C3AED),
-                  unitPrice: summary.dinnerUnitPrice,
                   count: summary.dinnerCount,
                   total: summary.dinnerTotal,
                 ),
 
-                const Divider(height: 28, color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 14),
+
+                // Pricing methodology disclaimer
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFF64748B)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Charges are calculated from your verified attendance and the menu rate configured by the mess manager for each meal.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 24, color: Color(0xFFE2E8F0)),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -574,22 +599,47 @@ class _BillScreenState extends State<BillScreen> {
     required String meal,
     required IconData icon,
     required Color color,
-    required double unitPrice,
     required int count,
     required double total,
   }) {
+    final countLabel = count == 0
+        ? '0 meals attended'
+        : '$count meal${count > 1 ? 's' : ''} attended';
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            '$meal (₹${unitPrice.toStringAsFixed(0)} × $count days)',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF334155),
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                meal,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                countLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
           ),
         ),
         Text(

@@ -287,21 +287,18 @@ class _BillManagementState extends State<BillManagement> {
                           children: [
                             _calcRow(
                               'Breakfast',
-                              summary.breakfastUnitPrice,
                               summary.breakfastCount,
                               summary.breakfastTotal,
                             ),
                             const SizedBox(height: 6),
                             _calcRow(
                               'Lunch',
-                              summary.lunchUnitPrice,
                               summary.lunchCount,
                               summary.lunchTotal,
                             ),
                             const SizedBox(height: 6),
                             _calcRow(
                               'Dinner',
-                              summary.dinnerUnitPrice,
                               summary.dinnerCount,
                               summary.dinnerTotal,
                             ),
@@ -420,20 +417,42 @@ class _BillManagementState extends State<BillManagement> {
     );
   }
 
-  Widget _calcRow(String meal, double unitPrice, int count, double total) {
+  Widget _calcRow(String meal, int count, double total) {
+    final countLabel = count == 0
+        ? '0 meals attended'
+        : '$count meal${count > 1 ? 's' : ''} attended (per menu rate)';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          '$meal: ₹${unitPrice.toStringAsFixed(0)} × $count days',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+        Row(
+          children: [
+            Icon(_getMealIcon(meal), size: 16, color: _getMealColor(meal)),
+            const SizedBox(width: 8),
+            Text(
+              '$meal ($countLabel)',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+            ),
+          ],
         ),
         Text(
           '₹${total.toStringAsFixed(0)}',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
         ),
       ],
     );
+  }
+
+  Color _getMealColor(String meal) {
+    switch (meal.toLowerCase()) {
+      case 'breakfast':
+        return const Color(0xFFD97706);
+      case 'lunch':
+        return const Color(0xFF0284C7);
+      case 'dinner':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF059669);
+    }
   }
 
   IconData _getMealIcon(String meal) {
@@ -724,15 +743,15 @@ class _BillManagementState extends State<BillManagement> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Breakfast: ${summary.breakfastCount}d (₹${summary.breakfastTotal.toStringAsFixed(0)})',
+                                    'Breakfast: ${summary.breakfastCount} (₹${summary.breakfastTotal.toStringAsFixed(0)})',
                                     style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                   ),
                                   Text(
-                                    'Lunch: ${summary.lunchCount}d (₹${summary.lunchTotal.toStringAsFixed(0)})',
+                                    'Lunch: ${summary.lunchCount} (₹${summary.lunchTotal.toStringAsFixed(0)})',
                                     style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                   ),
                                   Text(
-                                    'Dinner: ${summary.dinnerCount}d (₹${summary.dinnerTotal.toStringAsFixed(0)})',
+                                    'Dinner: ${summary.dinnerCount} (₹${summary.dinnerTotal.toStringAsFixed(0)})',
                                     style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                   ),
                                 ],

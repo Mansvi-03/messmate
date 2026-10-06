@@ -119,7 +119,7 @@ class _MenuManagementState extends State<MenuManagement> {
     final menu = data['menu']?.toString().trim();
     if (menu == null || menu.isEmpty) return 'No menu added yet';
 
-    return menu;
+    return menu.replaceAll(RegExp(r'\s*\(₹[0-9]+(?:\.[0-9]+)?\)\s*$'), '').trim();
   }
 
   double _getMealPrice(
@@ -246,154 +246,34 @@ class _MenuManagementState extends State<MenuManagement> {
     }
   }
 
-  void _openEditMenu(
+  Future<void> _openEditMenu(
     String day,
     String meal,
-  ) {
+  ) async {
     final currentMenu = _getMealMenu(day, meal);
     final currentPrice = _getMealPrice(day, meal);
 
-    final menuController = TextEditingController(
-      text: currentMenu == 'No menu added yet' ? '' : currentMenu,
-    );
-
-    final priceController = TextEditingController(
-      text: currentPrice > 0 ? currentPrice.toStringAsFixed(0) : '',
-    );
-
-    showDialog(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (dialogContext) {
-        bool isSaving = false;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final mealColor = _getMealColor(meal);
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: mealColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(_getMealIcon(meal), color: mealColor, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Configure $meal',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          day,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: menuController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: '$meal Menu Items',
-                        hintText: 'e.g. Dal Makhani, Paneer, Rice, Chapatis, Gulab Jamun',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: priceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Price per meal',
-                        hintText: '50',
-                        prefixText: '₹ ',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          final menu = menuController.text.trim();
-                          final price = double.tryParse(priceController.text.trim());
-
-                          if (menu.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter the menu items.'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (price == null || price <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter a valid meal price (> 0).'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          setDialogState(() {
-                            isSaving = true;
-                          });
-
-                          await _saveMenu(day, meal, menu, price);
-
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                        },
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Save Changes'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      barrierDismissible: false,
+      builder: (dialogContext) => _ConfigureMealDialog(
+        day: day,
+        meal: meal,
+        initialMenu: currentMenu == 'No menu added yet' ? '' : currentMenu,
+        initialPrice: currentPrice,
+        mealColor: _getMealColor(meal),
+        mealIcon: _getMealIcon(meal),
+      ),
     );
+
+    if (result != null && mounted) {
+      await _saveMenu(
+        day,
+        meal,
+        result['menu'] as String,
+        result['price'] as double,
+      );
+    }
   }
 
   @override
@@ -618,6 +498,165 @@ class _MenuManagementState extends State<MenuManagement> {
             ),
           );
         }),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// DEDICATED CONFIGURE MEAL DIALOG
+// ============================================================================
+class _ConfigureMealDialog extends StatefulWidget {
+  final String day;
+  final String meal;
+  final String initialMenu;
+  final double initialPrice;
+  final Color mealColor;
+  final IconData mealIcon;
+
+  const _ConfigureMealDialog({
+    required this.day,
+    required this.meal,
+    required this.initialMenu,
+    required this.initialPrice,
+    required this.mealColor,
+    required this.mealIcon,
+  });
+
+  @override
+  State<_ConfigureMealDialog> createState() => _ConfigureMealDialogState();
+}
+
+class _ConfigureMealDialogState extends State<_ConfigureMealDialog> {
+  late final TextEditingController _menuController;
+  late final TextEditingController _priceController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _menuController = TextEditingController(text: widget.initialMenu);
+    _priceController = TextEditingController(
+      text: widget.initialPrice > 0 ? widget.initialPrice.toStringAsFixed(0) : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final menu = _menuController.text.trim();
+    final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
+
+    Navigator.of(context).pop({
+      'menu': menu,
+      'price': price,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: widget.mealColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(widget.mealIcon, color: widget.mealColor, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Configure ${widget.meal}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  widget.day,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _menuController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: '${widget.meal} Menu Items *',
+                  hintText: 'e.g. Dal Makhani, Paneer, Rice, Chapatis, Gulab Jamun',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter the menu items';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Price per meal *',
+                  hintText: '50',
+                  prefixText: '₹ ',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a meal price';
+                  }
+                  final p = double.tryParse(value.trim());
+                  if (p == null || p <= 0) {
+                    return 'Please enter a valid price (> 0)';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Save Changes'),
+        ),
       ],
     );
   }

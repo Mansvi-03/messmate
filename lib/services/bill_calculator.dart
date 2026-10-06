@@ -272,9 +272,9 @@ class BillCalculator {
       }
     }
 
-    final double bUnitPrice = bCount > 0 ? (bTotal / bCount) : 40.0;
-    final double lUnitPrice = lCount > 0 ? (lTotal / lCount) : 60.0;
-    final double dUnitPrice = dCount > 0 ? (dTotal / dCount) : 50.0;
+    final double bUnitPrice = bCount > 0 ? (bTotal / bCount) : 0.0;
+    final double lUnitPrice = lCount > 0 ? (lTotal / lCount) : 0.0;
+    final double dUnitPrice = dCount > 0 ? (dTotal / dCount) : 0.0;
 
     final int totalMeals = bCount + lCount + dCount;
     final double totalBill = bTotal + lTotal + dTotal;

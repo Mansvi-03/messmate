@@ -6,12 +6,10 @@ class MenuRequestsScreen extends StatefulWidget {
   const MenuRequestsScreen({super.key});
 
   @override
-  State<MenuRequestsScreen> createState() =>
-      _MenuRequestsScreenState();
+  State<MenuRequestsScreen> createState() => _MenuRequestsScreenState();
 }
 
-class _MenuRequestsScreenState
-    extends State<MenuRequestsScreen> {
+class _MenuRequestsScreenState extends State<MenuRequestsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
 
   final List<String> _days = [
@@ -25,6 +23,7 @@ class _MenuRequestsScreenState
   ];
 
   Map<String, int> _requestCounts = {};
+  Map<String, List<Map<String, dynamic>>> _pendingRequests = {};
   Map<String, Map<String, dynamic>> _menu = {};
   DateTime _currentDate = DateTime.now();
 
@@ -42,10 +41,13 @@ class _MenuRequestsScreenState
   }
 
   String _getTomorrow() {
-    final tomorrow = _currentDate.add(
-      const Duration(days: 1),
-    );
+    final tomorrow = _currentDate.add(const Duration(days: 1));
     return _days[tomorrow.weekday - 1];
+  }
+
+  String _canonicalDay(String day) {
+    if (day.trim().isEmpty) return day;
+    return day.trim()[0].toUpperCase() + day.trim().substring(1).toLowerCase();
   }
 
   Future<void> _loadData() async {
@@ -56,15 +58,14 @@ class _MenuRequestsScreenState
       for (final item in menuData) {
         final day = item['day']?.toString();
         if (day != null && day.isNotEmpty) {
-          loadedMenu[day] = item;
+          loadedMenu[_canonicalDay(day)] = item;
         }
       }
 
-      final requests = await _firestoreService.getAll(
-        'menu_change_requests',
-      );
+      final requests = await _firestoreService.getAll('menu_change_requests');
 
       final Map<String, int> counts = {};
+      final Map<String, List<Map<String, dynamic>>> requestsByMeal = {};
 
       for (final request in requests) {
         if (request['status'] != 'pending') {
@@ -78,8 +79,10 @@ class _MenuRequestsScreenState
           continue;
         }
 
-        final key = '$day-$meal';
+        final key = '${_canonicalDay(day)}-${meal.toLowerCase()}';
         counts[key] = (counts[key] ?? 0) + 1;
+
+        requestsByMeal.putIfAbsent(key, () => []).add(request);
       }
 
       if (!mounted) return;
@@ -87,6 +90,7 @@ class _MenuRequestsScreenState
       setState(() {
         _menu = loadedMenu;
         _requestCounts = counts;
+        _pendingRequests = requestsByMeal;
         _currentDate = DateTime.now();
         _isLoading = false;
         _errorMessage = null;
@@ -96,17 +100,18 @@ class _MenuRequestsScreenState
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load menu requests.';
+        _errorMessage = 'Failed to load menu requests: $e';
       });
     }
   }
 
-  String _getMealMenu(
-    String day,
-    String meal,
-  ) {
-    final dayMenu = _menu[day];
+  String _cleanMenuText(String text) {
+    // Strip any trailing price tag like (₹180) that might have been saved in the text previously
+    return text.replaceAll(RegExp(r'\s*\(₹[0-9]+(?:\.[0-9]+)?\)\s*$'), '').trim();
+  }
 
+  String _getMealMenu(String day, String meal) {
+    final dayMenu = _menu[_canonicalDay(day)];
     if (dayMenu == null) {
       return 'No menu added yet';
     }
@@ -115,12 +120,8 @@ class _MenuRequestsScreenState
 
     if (raw is Map) {
       final menu = raw['menu']?.toString().trim() ?? '';
-      final price = raw['price'];
       if (menu.isEmpty) return 'No menu added yet';
-      if (price != null && price != 0) {
-        return '$menu (₹$price)';
-      }
-      return menu;
+      return _cleanMenuText(menu);
     }
 
     final value = raw?.toString().trim();
@@ -128,226 +129,131 @@ class _MenuRequestsScreenState
       return 'No menu added yet';
     }
 
-    return value;
+    return _cleanMenuText(value);
   }
 
-  int _getRequestCount(
-    String day,
-    String meal,
-  ) {
-    return _requestCounts['$day-$meal'] ?? 0;
-  }
+  double _getMealPrice(String day, String meal) {
+    final dayMenu = _menu[_canonicalDay(day)];
+    if (dayMenu == null) return _defaultPrice(meal);
 
-  Future<void> _changeMenu(
-    String day,
-    String meal,
-  ) async {
-    final currentMenu = _getMealMenu(
-      day,
-      meal,
-    );
-
-    final controller = TextEditingController(
-      text: currentMenu == 'No menu added yet' ? '' : currentMenu,
-    );
-
-    final formKey = GlobalKey<FormState>();
-
-    final newMenu = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                children: [
-                  const Icon(Icons.edit_note_rounded, color: Color(0xFF7C3AED)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Update $meal Menu',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Address student suggestions for $day $meal by updating the menu.',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: controller,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'New Menu Items',
-                        hintText: 'Enter new dishes...',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter the menu';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (!formKey.currentState!.validate()) {
-                      return;
-                    }
-                    Navigator.pop(
-                      context,
-                      controller.text.trim(),
-                    );
-                  },
-                  child: const Text('Save & Resolve Requests'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    controller.dispose();
-
-    if (newMenu == null || newMenu.trim().isEmpty) {
-      return;
+    final raw = dayMenu[meal.toLowerCase()];
+    if (raw is Map) {
+      final price = raw['price'];
+      if (price is num && price > 0) return price.toDouble();
     }
 
-    await _saveMenu(
-      day,
-      meal,
-      newMenu.trim(),
-    );
+    return _defaultPrice(meal);
   }
 
-  Future<void> _saveMenu(
-    String day,
-    String meal,
-    String newMenu,
-  ) async {
-    try {
-      final existingMenu = await _firestoreService.get(
-        'menus',
-        day,
-      );
+  double _defaultPrice(String meal) {
+    switch (meal.toLowerCase()) {
+      case 'breakfast':
+        return 40.0;
+      case 'lunch':
+        return 60.0;
+      case 'dinner':
+        return 50.0;
+      default:
+        return 50.0;
+    }
+  }
 
-      final Map<String, dynamic> updatedMenu = {};
+  int _getRequestCount(String day, String meal) {
+    return _requestCounts['${_canonicalDay(day)}-${meal.toLowerCase()}'] ?? 0;
+  }
 
-      if (existingMenu != null) {
-        updatedMenu.addAll(existingMenu);
-      }
+  List<Map<String, dynamic>> _getMealRequests(String day, String meal) {
+    return _pendingRequests['${_canonicalDay(day)}-${meal.toLowerCase()}'] ?? [];
+  }
 
-      final canonicalDay = day.trim().isEmpty
-          ? day
-          : day.trim()[0].toUpperCase() + day.trim().substring(1).toLowerCase();
+  Future<void> _openUpdateAndResolveDialog(String day, String meal) async {
+    final currentMenu = _getMealMenu(day, meal);
+    final currentPrice = _getMealPrice(day, meal);
+    final requests = _getMealRequests(day, meal);
 
-      updatedMenu['day'] = canonicalDay;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _UpdateMenuAndResolveDialog(
+        day: _canonicalDay(day),
+        meal: meal,
+        initialMenu: currentMenu == 'No menu added yet' ? '' : currentMenu,
+        initialPrice: currentPrice,
+        requests: requests,
+        onSave: (newMenu, newPrice) async {
+          await _saveMenuAndResolve(day, meal, newMenu, newPrice);
+        },
+      ),
+    );
 
-      final existingMealData = updatedMenu[meal.toLowerCase()];
-      double existingPrice = 0;
-      if (existingMealData is Map) {
-        final p = existingMealData['price'];
-        if (p is num) existingPrice = p.toDouble();
-      }
-      if (existingPrice <= 0) {
-        existingPrice = meal.toLowerCase() == 'breakfast'
-            ? 40.0
-            : (meal.toLowerCase() == 'lunch' ? 60.0 : 50.0);
-      }
-
-      updatedMenu[meal.toLowerCase()] = {
-        'menu': newMenu.trim(),
-        'price': existingPrice,
-      };
-
-      await _firestoreService.add(
-        'menus',
-        canonicalDay,
-        updatedMenu,
-      );
-
-      if (canonicalDay.toLowerCase() != canonicalDay) {
-        try {
-          await _firestoreService.delete(
-            'menus',
-            canonicalDay.toLowerCase(),
-          );
-        } catch (_) {}
-      }
-
-      // Mark related requests as handled
-      final requests = await _firestoreService.getAll(
-        'menu_change_requests',
-      );
-
-      for (final request in requests) {
-        if (request['status'] == 'pending' &&
-            request['day'] == day &&
-            request['meal'] == meal) {
-          await _firestoreService.update(
-            'menu_change_requests',
-            request['id'],
-            {
-              'status': 'handled',
-            },
-          );
-        }
-      }
-
+    if (result == true && mounted) {
       await _loadData();
-
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '$meal menu updated and student requests marked as handled.',
+            '$meal menu & price updated, and student requests marked as handled.',
           ),
+          backgroundColor: const Color(0xFF059669),
         ),
       );
-    } catch (e) {
-      if (!mounted) return;
+    }
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update menu.'),
-        ),
-      );
+  Future<void> _saveMenuAndResolve(
+    String day,
+    String meal,
+    String newMenu,
+    double newPrice,
+  ) async {
+    final canonicalDay = _canonicalDay(day);
+
+    final existingMenu = await _firestoreService.get('menus', canonicalDay);
+    final Map<String, dynamic> updatedMenu = {};
+
+    if (existingMenu != null) {
+      updatedMenu.addAll(existingMenu);
+    }
+
+    updatedMenu['day'] = canonicalDay;
+    updatedMenu[meal.toLowerCase()] = {
+      'menu': newMenu.trim(),
+      'price': newPrice,
+    };
+
+    await _firestoreService.add('menus', canonicalDay, updatedMenu);
+
+    if (canonicalDay.toLowerCase() != canonicalDay) {
+      try {
+        await _firestoreService.delete('menus', canonicalDay.toLowerCase());
+      } catch (_) {}
+    }
+
+    // Mark related requests as handled
+    final requests = await _firestoreService.getAll('menu_change_requests');
+    for (final request in requests) {
+      if (request['status'] == 'pending' &&
+          request['day']?.toString().toLowerCase() == day.toLowerCase() &&
+          request['meal']?.toString().toLowerCase() == meal.toLowerCase()) {
+        final docId = request['id']?.toString();
+        if (docId != null && docId.isNotEmpty) {
+          await _firestoreService.update(
+            'menu_change_requests',
+            docId,
+            {'status': 'handled'},
+          );
+        }
+      }
     }
   }
 
   IconData _getMealIcon(String meal) {
-    switch (meal) {
-      case 'Breakfast':
+    switch (meal.toLowerCase()) {
+      case 'breakfast':
         return Icons.free_breakfast_rounded;
-      case 'Lunch':
+      case 'lunch':
         return Icons.lunch_dining_rounded;
-      case 'Dinner':
+      case 'dinner':
         return Icons.dinner_dining_rounded;
       default:
         return Icons.restaurant_rounded;
@@ -355,12 +261,12 @@ class _MenuRequestsScreenState
   }
 
   Color _getMealColor(String meal) {
-    switch (meal) {
-      case 'Breakfast':
+    switch (meal.toLowerCase()) {
+      case 'breakfast':
         return const Color(0xFFD97706);
-      case 'Lunch':
+      case 'lunch':
         return const Color(0xFF0284C7);
-      case 'Dinner':
+      case 'dinner':
         return const Color(0xFF7C3AED);
       default:
         return const Color(0xFF059669);
@@ -370,19 +276,24 @@ class _MenuRequestsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Menu Change Requests'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: _loadData,
+          ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669)))
           : _errorMessage != null
               ? Center(
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF64748B),
-                    ),
+                    style: const TextStyle(fontSize: 15, color: Color(0xFF64748B)),
                   ),
                 )
               : RefreshIndicator(
@@ -412,6 +323,7 @@ class _MenuRequestsScreenState
           date: _currentDate.add(const Duration(days: 1)),
           meals: const ['Breakfast'],
         ),
+        const SizedBox(height: 40),
       ],
     );
   }
@@ -434,7 +346,7 @@ class _MenuRequestsScreenState
             Text(
               '$title ($day)',
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 19,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
                 letterSpacing: -0.3,
@@ -444,14 +356,13 @@ class _MenuRequestsScreenState
               dateStr,
               style: const TextStyle(
                 fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: Color(0xFF64748B),
               ),
             ),
           ],
         ),
-
         const SizedBox(height: 14),
-
         ...meals.map((meal) => _buildMealCard(day: day, meal: meal)),
       ],
     );
@@ -462,7 +373,9 @@ class _MenuRequestsScreenState
     required String meal,
   }) {
     final currentMenu = _getMealMenu(day, meal);
+    final currentPrice = _getMealPrice(day, meal);
     final requestCount = _getRequestCount(day, meal);
+    final mealRequests = _getMealRequests(day, meal);
     final mealColor = _getMealColor(meal);
 
     return Container(
@@ -472,50 +385,75 @@ class _MenuRequestsScreenState
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1,
+          color: requestCount > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+          width: requestCount > 0 ? 1.5 : 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Meal Title + Request Count Badge
+          // Header Row: Meal Name, Price Tag, Request Badge
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: mealColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: mealColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(_getMealIcon(meal), color: mealColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      meal,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
-                    child: Icon(_getMealIcon(meal), color: mealColor, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    meal,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF059669).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '₹${currentPrice.toStringAsFixed(0)} / meal',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF059669),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: requestCount > 0
-                      ? const Color(0xFFFFFBEB)
-                      : const Color(0xFFF1F5F9),
+                  color: requestCount > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: requestCount > 0
-                        ? const Color(0xFFFDE68A)
-                        : const Color(0xFFE2E8F0),
+                    color: requestCount > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Row(
@@ -532,9 +470,7 @@ class _MenuRequestsScreenState
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      requestCount == 1
-                          ? '1 Request'
-                          : '$requestCount Requests',
+                      requestCount == 1 ? '1 Request' : '$requestCount Requests',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -551,7 +487,7 @@ class _MenuRequestsScreenState
 
           const SizedBox(height: 14),
 
-          // Current Menu Label & Box
+          // Current Planned Dishes
           const Text(
             'Current Planned Menu',
             style: TextStyle(
@@ -574,9 +510,58 @@ class _MenuRequestsScreenState
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
+
+          // Student Requests Preview (if any)
+          if (mealRequests.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.feedback_outlined, size: 15, color: Color(0xFFB45309)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Student Suggestion${mealRequests.length > 1 ? 's' : ''}:',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...mealRequests.take(2).map((req) {
+                    final student = req['studentName'] ?? 'Student';
+                    final text = req['request'] ?? '';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        '• "$text" — $student',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF78350F),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 14),
 
@@ -584,12 +569,14 @@ class _MenuRequestsScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _changeMenu(day, meal),
-              icon: const Icon(Icons.edit_rounded, size: 16),
+              onPressed: () => _openUpdateAndResolveDialog(day, meal),
+              icon: const Icon(Icons.edit_note_rounded, size: 18),
               label: const Text('Update Menu & Resolve Requests'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -597,4 +584,251 @@ class _MenuRequestsScreenState
       ),
     );
   }
-}
+}
+
+// ============================================================================
+// DEDICATED UPDATE MENU & AMOUNT DIALOG
+// ============================================================================
+class _UpdateMenuAndResolveDialog extends StatefulWidget {
+  final String day;
+  final String meal;
+  final String initialMenu;
+  final double initialPrice;
+  final List<Map<String, dynamic>> requests;
+  final Future<void> Function(String newMenu, double newPrice) onSave;
+
+  const _UpdateMenuAndResolveDialog({
+    required this.day,
+    required this.meal,
+    required this.initialMenu,
+    required this.initialPrice,
+    required this.requests,
+    required this.onSave,
+  });
+
+  @override
+  State<_UpdateMenuAndResolveDialog> createState() => _UpdateMenuAndResolveDialogState();
+}
+
+class _UpdateMenuAndResolveDialogState extends State<_UpdateMenuAndResolveDialog> {
+  late final TextEditingController _menuController;
+  late final TextEditingController _priceController;
+  final _formKey = GlobalKey<FormState>();
+
+  bool _isSaving = false;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _menuController = TextEditingController(text: widget.initialMenu);
+    _priceController = TextEditingController(
+      text: widget.initialPrice > 0 ? widget.initialPrice.toStringAsFixed(0) : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSubmit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final newMenu = _menuController.text.trim();
+    final newPrice = double.tryParse(_priceController.text.trim()) ?? 0;
+
+    setState(() {
+      _isSaving = true;
+      _errorText = null;
+    });
+
+    try {
+      await widget.onSave(newMenu, newPrice);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _errorText = 'Failed to save: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.edit_note_rounded, color: Color(0xFF7C3AED), size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Update ${widget.meal} Menu',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  widget.day,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pending Requests Info
+              if (widget.requests.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Student Request (${widget.requests.length}):',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '"${widget.requests.first['request']}"',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF78350F),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else
+                const Text(
+                  'Modify dishes and meal pricing to keep the mess schedule updated.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+
+              const SizedBox(height: 12),
+
+              // Menu Items Field
+              TextFormField(
+                controller: _menuController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Menu Dishes / Items *',
+                  hintText: 'e.g. Dal Makhani, Paneer, Rice, Chapatis',
+                  prefixIcon: Icon(Icons.restaurant_menu_rounded),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter the menu items';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 14),
+
+              // Meal Price / Amount Field
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Price per meal (Amount) *',
+                  hintText: 'e.g. 60',
+                  prefixText: '₹ ',
+                  prefixIcon: Icon(Icons.currency_rupee_rounded),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter the meal price';
+                  }
+                  final p = double.tryParse(value.trim());
+                  if (p == null || p <= 0) {
+                    return 'Please enter a valid price greater than 0';
+                  }
+                  return null;
+                },
+              ),
+
+              if (_errorText != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorText!,
+                  style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isSaving ? null : _handleSubmit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7C3AED),
+            foregroundColor: Colors.white,
+          ),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : const Text('Save & Resolve Requests'),
+        ),
+      ],
+    );
+  }
+}
