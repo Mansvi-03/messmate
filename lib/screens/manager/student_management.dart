@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/validators.dart';
 
 class StudentManagement extends StatefulWidget {
   const StudentManagement({super.key});
@@ -11,6 +14,7 @@ class StudentManagement extends StatefulWidget {
 
 class _StudentManagementState extends State<StudentManagement> {
   final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
 
   bool _loading = true;
   List<Map<String, dynamic>> _students = [];
@@ -61,6 +65,7 @@ class _StudentManagementState extends State<StudentManagement> {
     final messenger = ScaffoldMessenger.of(context);
     final nameController = TextEditingController();
     final emailController = TextEditingController();
+    final passwordController = TextEditingController();
     final contactController = TextEditingController();
     final collegeController = TextEditingController();
     final hostelController = TextEditingController();
@@ -69,8 +74,10 @@ class _StudentManagementState extends State<StudentManagement> {
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         bool isSaving = false;
+        bool obscurePassword = true;
 
         return StatefulBuilder(
           builder: (sbContext, setDialogState) {
@@ -80,64 +87,121 @@ class _StudentManagementState extends State<StudentManagement> {
                 children: [
                   Icon(Icons.person_add_rounded, color: Color(0xFF059669)),
                   SizedBox(width: 10),
-                  Text(
-                    'Add New Student',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: Text(
+                      'Add New Student',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name *',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Enter student details to generate their account credentials.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Name is required' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email Address *',
-                          prefixIcon: Icon(Icons.email_outlined),
+                        const SizedBox(height: 16),
+
+                        // Name Field
+                        TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Full Name *',
+                            hintText: 'e.g. Rahul Sharma',
+                            prefixIcon: Icon(Icons.person_outline_rounded),
+                          ),
+                          validator: Validators.required,
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Email is required' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: contactController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact Number',
-                          prefixIcon: Icon(Icons.phone_outlined),
+                        const SizedBox(height: 12),
+
+                        // Email Field
+                        TextFormField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Email Address *',
+                            hintText: 'student@college.edu',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          validator: Validators.email,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: collegeController,
-                        decoration: const InputDecoration(
-                          labelText: 'College / Institute',
-                          prefixIcon: Icon(Icons.school_outlined),
+                        const SizedBox(height: 12),
+
+                        // Password Field
+                        TextFormField(
+                          controller: passwordController,
+                          obscureText: obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password *',
+                            hintText: 'At least 6 characters',
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: const Color(0xFF64748B),
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  obscurePassword = !obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          validator: Validators.password,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: hostelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Hostel / Room Details',
-                          prefixIcon: Icon(Icons.apartment_rounded),
+                        const SizedBox(height: 12),
+
+                        // Contact Number Field
+                        TextFormField(
+                          controller: contactController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Contact Number *',
+                            hintText: '10-digit mobile number',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          validator: Validators.phone,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+
+                        // College / Institute Field
+                        TextFormField(
+                          controller: collegeController,
+                          decoration: const InputDecoration(
+                            labelText: 'College / Institute *',
+                            hintText: 'e.g. National Institute of Tech',
+                            prefixIcon: Icon(Icons.school_outlined),
+                          ),
+                          validator: Validators.required,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Hostel / Room Field
+                        TextFormField(
+                          controller: hostelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hostel / Room Details *',
+                            hintText: 'e.g. Block B, Room 204',
+                            prefixIcon: Icon(Icons.apartment_rounded),
+                          ),
+                          validator: Validators.required,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -155,14 +219,22 @@ class _StudentManagementState extends State<StudentManagement> {
                           setDialogState(() => isSaving = true);
 
                           try {
-                            final id = DateTime.now().millisecondsSinceEpoch.toString();
-                            await _firestoreService.add('students', id, {
+                            // 1. Create student in Firebase Auth without disrupting manager session
+                            final uid = await _authService.createStudentAccount(
+                              email: emailController.text.trim(),
+                              password: passwordController.text,
+                            );
+
+                            // 2. Create student record in Firestore collection 'students'
+                            await _firestoreService.add('students', uid, {
+                              'id': uid,
                               'name': nameController.text.trim(),
                               'email': emailController.text.trim(),
                               'contactNumber': contactController.text.trim(),
                               'college': collegeController.text.trim(),
                               'hostel': hostelController.text.trim(),
                               'role': 'student',
+                              'createdAt': DateTime.now().toIso8601String(),
                             });
 
                             if (dialogContext.mounted) {
@@ -173,12 +245,34 @@ class _StudentManagementState extends State<StudentManagement> {
 
                             messenger.showSnackBar(
                               const SnackBar(
-                                content: Text('Student added successfully'),
+                                backgroundColor: Color(0xFF059669),
+                                content: Text('Student registered successfully! Student can now log in.'),
+                              ),
+                            );
+                          } on FirebaseAuthException catch (e) {
+                            setDialogState(() => isSaving = false);
+                            String errorMsg = 'Failed to create student account.';
+                            if (e.code == 'email-already-in-use') {
+                              errorMsg = 'A user with this email address already exists.';
+                            } else if (e.code == 'weak-password') {
+                              errorMsg = 'Password is too weak. Must be at least 6 characters.';
+                            } else if (e.code == 'invalid-email') {
+                              errorMsg = 'The email address is invalid.';
+                            } else if (e.message != null) {
+                              errorMsg = e.message!;
+                            }
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                backgroundColor: const Color(0xFFEF4444),
+                                content: Text(errorMsg),
                               ),
                             );
                           } catch (e) {
+                            setDialogState(() => isSaving = false);
                             messenger.showSnackBar(
                               SnackBar(
+                                backgroundColor: const Color(0xFFEF4444),
                                 content: Text('Failed to add student: $e'),
                               ),
                             );
@@ -204,6 +298,7 @@ class _StudentManagementState extends State<StudentManagement> {
 
     nameController.dispose();
     emailController.dispose();
+    passwordController.dispose();
     contactController.dispose();
     collegeController.dispose();
     hostelController.dispose();
@@ -244,58 +339,63 @@ class _StudentManagementState extends State<StudentManagement> {
                   ),
                 ],
               ),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name *',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Full Name *',
+                            prefixIcon: Icon(Icons.person_outline_rounded),
+                          ),
+                          validator: Validators.required,
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Name is required' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email Address *',
-                          prefixIcon: Icon(Icons.email_outlined),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Email Address *',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          validator: Validators.email,
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Email is required' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: contactController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact Number',
-                          prefixIcon: Icon(Icons.phone_outlined),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: contactController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Contact Number *',
+                            hintText: '10-digit mobile number',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          validator: Validators.phone,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: collegeController,
-                        decoration: const InputDecoration(
-                          labelText: 'College / Institute',
-                          prefixIcon: Icon(Icons.school_outlined),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: collegeController,
+                          decoration: const InputDecoration(
+                            labelText: 'College / Institute *',
+                            prefixIcon: Icon(Icons.school_outlined),
+                          ),
+                          validator: Validators.required,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: hostelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Hostel / Room Details',
-                          prefixIcon: Icon(Icons.apartment_rounded),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: hostelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hostel / Room Details *',
+                            prefixIcon: Icon(Icons.apartment_rounded),
+                          ),
+                          validator: Validators.required,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

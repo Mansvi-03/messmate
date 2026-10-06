@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../manager/manager_dashboard.dart';
 import '../student/student_dashboard.dart';
-import 'manager_register_screen.dart';
-import 'student_register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -304,102 +302,42 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-                  // Registration Divider
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Divider(color: Color(0xFFE2E8F0)),
+                  // Notice about registration policy
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'New to MessMate?',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF64748B),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.lock_person_outlined,
+                          size: 18,
+                          color: Color(0xFF64748B),
+                        ),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Student accounts are created by the Mess Manager.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-                      const Expanded(
-                        child: Divider(color: Color(0xFFE2E8F0)),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Register as Student
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const StudentRegisterScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.school_outlined,
-                      size: 20,
-                      color: Color(0xFF059669),
-                    ),
-                    label: const Text(
-                      'Register as Student',
-                      style: TextStyle(
-                        color: Color(0xFF059669),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color(0xFFA7F3D0),
-                        width: 1.4,
-                      ),
-                      backgroundColor: const Color(0xFFECFDF5),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Register as Manager
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManagerRegisterScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.admin_panel_settings_outlined,
-                      size: 20,
-                      color: Color(0xFF0284C7),
-                    ),
-                    label: const Text(
-                      'Register as Mess Manager',
-                      style: TextStyle(
-                        color: Color(0xFF0284C7),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: Color(0xFFBAE6FD),
-                        width: 1.4,
-                      ),
-                      backgroundColor: const Color(0xFFF0F9FF),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      ],
                     ),
                   ),
 
